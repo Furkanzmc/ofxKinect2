@@ -1023,7 +1023,7 @@ ofPoint Body::bodyToScreen(const CameraSpacePoint& bodyPoint, int width, int hei
 {
 
 	// Calculate the body's position on the screen
-	DepthSpacePoint depthPoint = {0};
+	ColorSpacePoint rgbPoint = {0};
 	ICoordinateMapper* m_pCoordinateMapper = NULL;
 	HRESULT hr = device->get().kinect2->get_CoordinateMapper(&m_pCoordinateMapper);
 
@@ -1032,15 +1032,14 @@ ofPoint Body::bodyToScreen(const CameraSpacePoint& bodyPoint, int width, int hei
 
 	if(SUCCEEDED(hr))
 	{
-		m_pCoordinateMapper->MapCameraPointToDepthSpace(bodyPoint, &depthPoint);
-
-		screenPointX = static_cast<float>(depthPoint.X * ofGetWindowWidth()) / cDepthWidth;
-		screenPointY = static_cast<float>(depthPoint.Y * ofGetWindowHeight()) / cDepthHeight;
+		m_pCoordinateMapper->MapCameraPointToColorSpace(bodyPoint, &rgbPoint);
+		//screenPointX = static_cast<float>(rgbPoint.X);
+		//screenPointY = static_cast<float>(rgbPoint.Y);
 	}
 							
 	safe_release(m_pCoordinateMapper);
 
-    return ofPoint(screenPointX, screenPointY);
+    return ofPoint(rgbPoint.X, rgbPoint.Y);
 }
 
 //----------------------------------------------------------
