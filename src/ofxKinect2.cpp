@@ -1028,7 +1028,7 @@ void Body::drawBody()
 	drawBone(JointType_Neck, JointType_SpineShoulder);
 	drawBone(JointType_SpineShoulder, JointType_SpineMid);
 	drawBone(JointType_SpineMid, JointType_SpineBase);
-	drawBone(JointType_SpineShoulder, JointType_ShoulderRight);
+	drawBone(JointType_SpineShoulder, JointType_ShoulderLeft);
 	drawBone(JointType_SpineShoulder, JointType_ShoulderRight);
 	drawBone(JointType_SpineBase, JointType_HipLeft);
 	drawBone(JointType_SpineBase, JointType_HipRight);
