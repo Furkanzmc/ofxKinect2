@@ -6,6 +6,8 @@
 #include "ofxKinect2Enums.h"
 #include "Kinect.h"
 
+#include "D2d1.h"
+
 namespace ofxKinect2 {
 #define MAX_STR 256
 #define MAX_SENSORS 10

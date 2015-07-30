@@ -989,18 +989,29 @@ void Body::close()
 //----------------------------------------------------------
 void Body::update()
 {
-	Joint joints[JointType_Count];
+	Joint newjoints[JointType_Count];
 	left_hand_state = HandState_Unknown;
 	right_hand_state = HandState_Unknown;
 
 	body->get_HandLeftState(&left_hand_state);
 	body->get_HandRightState(&right_hand_state);
+	
+	// TODO: Correct tracking ID management
+	HRESULT hr = body->get_TrackingId(&tracking_id);
 
-	HRESULT hr = body->GetJoints(_countof(joints), joints);
+	hr = body->GetJoints(_countof(newjoints), newjoints);
+
+	joints.clear();
+	joints.assign(newjoints, newjoints + JointType_Count);
+	
+	if (joint_points.size() == 0) {
+		for(int i = 0; i < joints.size(); ++i)
+			joint_points.push_back(ofPoint(-1,-1));
+	}
 
 	if(SUCCEEDED(hr))
 	{
-		for(int i = 0; i < _countof(joints); ++i)
+		for(int i = 0; i < joints.size(); ++i)
 		{
 			joint_points[i] = bodyToScreen(joints[i].Position, ofGetWidth(), ofGetHeight());
 		}
@@ -1010,13 +1021,24 @@ void Body::update()
 //----------------------------------------------------------
 ofPoint Body::bodyToScreen(const CameraSpacePoint& bodyPoint, int width, int height)
 {
-    // Calculate the body's position on the screen
-    DepthSpacePoint depthPoint = {0};
-	device->getMapper()->MapCameraPointToDepthSpace(bodyPoint, &depthPoint);
 
-	// TODO: width/ height
-    float screenPointX = static_cast<float>(depthPoint.X * width) / 512;
-    float screenPointY = static_cast<float>(depthPoint.Y * height) / 424;
+	// Calculate the body's position on the screen
+	DepthSpacePoint depthPoint = {0};
+	ICoordinateMapper* m_pCoordinateMapper = NULL;
+	HRESULT hr = device->get().kinect2->get_CoordinateMapper(&m_pCoordinateMapper);
+
+	float screenPointX = 0;
+	float screenPointY = 0;
+
+	if(SUCCEEDED(hr))
+	{
+		m_pCoordinateMapper->MapCameraPointToDepthSpace(bodyPoint, &depthPoint);
+
+		screenPointX = static_cast<float>(depthPoint.X * ofGetWindowWidth()) / cDepthWidth;
+		screenPointY = static_cast<float>(depthPoint.Y * ofGetWindowHeight()) / cDepthHeight;
+	}
+							
+	safe_release(m_pCoordinateMapper);
 
     return ofPoint(screenPointX, screenPointY);
 }
@@ -1193,81 +1215,90 @@ bool BodyStream::readFrame(IMultiSourceFrame* p_multi_frame)
 			hr = p_frame->GetAndRefreshBodyData(_countof(ppBodies), ppBodies);
 		}
 
-		if (SUCCEEDED(hr))
-		{
-			readed = true;
-			righthand_pos_ =  ofPoint(0, 0);
-			float nearest = 10000000;
-			for(int i = 0; i < _countof(ppBodies); ++i)
+		if (lock()) {
+
+			if (SUCCEEDED(hr))
 			{
-				if(ppBodies[i])
+				readed = true;
+				righthand_pos_ =  ofPoint(0, 0);
+				float nearest = 10000000;
+				for(int i = 0; i < _countof(ppBodies); ++i)
 				{
-					Joint joints[JointType_Count];
-					HandState right_hand_state = HandState_Unknown;
-
-					ppBodies[i]->get_HandRightState(&right_hand_state);
-
-					HRESULT hr = ppBodies[i]->GetJoints(_countof(joints), joints);
-
-					if(SUCCEEDED(hr))
+					IBody* pBody = ppBodies[i];
+					if (pBody)
 					{
-						if(joints[JointType_HandRight].TrackingState == TrackingState_Tracked)
+					
+						BOOLEAN bTracked = false;
+						hr = pBody->get_IsTracked(&bTracked);
+
+						if (SUCCEEDED(hr) && bTracked)
 						{
-							float z_pos = joints[JointType_HandRight].Position.Z;
-							if(z_pos < nearest)
+
+							Joint joints[JointType_Count]; 
+							D2D1_POINT_2F jointPoints[JointType_Count];
+							HandState left_hand_state = HandState_Unknown;
+							HandState right_hand_state = HandState_Unknown;
+
+							pBody->get_HandLeftState(&left_hand_state);
+							pBody->get_HandRightState(&right_hand_state);
+
+							HRESULT hr = pBody->GetJoints(_countof(joints), joints);
+
+							if(SUCCEEDED(hr))
 							{
-								nearest = z_pos;
 								// Calculate the body's position on the screen
 								DepthSpacePoint depthPoint = {0};
-								ICoordinateMapper* mapper = NULL;
-								hr = device->get().kinect2->get_CoordinateMapper(&mapper);
+								ICoordinateMapper* m_pCoordinateMapper = NULL;
+								hr = device->get().kinect2->get_CoordinateMapper(&m_pCoordinateMapper);
+
 								if(SUCCEEDED(hr))
 								{
-									mapper->MapCameraPointToDepthSpace(joints[JointType_HandRight].Position, &depthPoint);
+									for (int j = 0; j < _countof(joints); ++j)
+									{
+										m_pCoordinateMapper->MapCameraPointToDepthSpace(joints[j].Position, &depthPoint);
 
-									// TODO: width/ height
-									float screenPointX = static_cast<float>(depthPoint.X * 1920) / 512;
-									float screenPointY = static_cast<float>(depthPoint.Y * 1080) / 424;
-
-									righthand_pos_ =  ofPoint(screenPointX, screenPointY);
+										float screenPointX = static_cast<float>(depthPoint.X * ofGetWindowWidth()) / cDepthWidth;
+										float screenPointY = static_cast<float>(depthPoint.Y * ofGetWindowHeight()) / cDepthHeight;
+								
+									}
 								}
-
-								safe_release(mapper);
+							
+								safe_release(m_pCoordinateMapper);
 							}
 						}
 					}
 				}
-			}
 
-			/*
-			bodies.clear();
-			for(int i = 0; i < _countof(ppBodies); ++i)
-			{
-				BOOLEAN tracked = false;
-				if(ppBodies[i])
+				// Clears the body list
+				for (int b=0 ; b<bodies.size() ; b++) {
+					delete bodies[b];
+				}
+				bodies.clear();
+
+				for(int i = 0; i < _countof(ppBodies); ++i)
 				{
-					ppBodies[i]->get_IsTracked(&tracked);
-					if(tracked)
+					BOOLEAN tracked = false;
+					if(ppBodies[i])
 					{
-						UINT64 id = -1;
-						ppBodies[i]->get_TrackingId(&id);
-						for(int j = 0; j < bodies.size(); ++j)
+						ppBodies[i]->get_IsTracked(&tracked);
+						if(tracked)
 						{
-							if(bodies[j].getId() == (int)id)
-							{
-								break;
-							}
+							UINT64 id = -1;
+							ppBodies[i]->get_TrackingId(&id);
+
+							// Add the tracked body to the list
+							Body *body = new Body();
+							body->setup(*device, ppBodies[i]);
+							body->update();
+							bodies.push_back(body);
+							// TODO: Use the body tracked id to re-use the Body objects
+							// TODO: Clarify the relationship between Body and IBody.
 						}
-						Body body;
-						body.setup(*device, ppBodies[i]);
-						bodies.push_back(body);
-					}
-					else
-					{
 					}
 				}
 			}
-			/**/
+
+			unlock();
 		}
 
 		for(int i = 0; i < _countof(ppBodies); ++i)
@@ -1290,37 +1321,57 @@ void BodyStream::draw()
 //----------------------------------------------------------
 void BodyStream::drawHands()
 {
-	for(int i = 0; i < bodies.size(); i++)
-	{
-		bodies[i].drawHands();
+	if (lock()) {
+		for(int i = 0; i < bodies.size(); i++)
+		{
+			if (bodies[i]->getJointPoints().size() > 0) {
+				bodies[i]->drawHands();
+			}
+		}
+		unlock();
 	}
 }
 
 //----------------------------------------------------------
 void BodyStream::drawHandLeft()
 {
-	for(int i = 0; i < bodies.size(); i++)
-	{
-		bodies[i].drawHandLeft();
+	if (lock()) {
+		for(int i = 0; i < bodies.size(); i++)
+		{
+			if (bodies[i]->getJointPoints().size() > 0) {
+				bodies[i]->drawHandLeft();
+			}
+		}
+		unlock();
 	}
 }
 
 //----------------------------------------------------------
 void BodyStream::drawHandRight()
 {
-	for(int i = 0; i < bodies.size(); i++)
-	{
-		bodies[i].drawHandRight();
+	if (lock()) {
+		for(int i = 0; i < bodies.size(); i++)
+		{
+			if (bodies[i]->getJointPoints().size() > 0) {
+				bodies[i]->drawHandRight();
+			}
+		}
+		unlock();
 	}
 }
 
 //----------------------------------------------------------
 void BodyStream::draw(int x, int y, int w, int h)
 {
-	for(int i = 0; i < bodies.size(); i++)
-	{
-		bodies[i].drawBody();
-		bodies[i].drawHands();
+	if (lock()) {
+		for(int i = 0; i < bodies.size(); i++)
+		{
+			if (bodies[i]->getJointPoints().size() > 0) {
+				bodies[i]->drawBody();
+				bodies[i]->drawHands();
+			}
+		}
+		unlock();
 	}
 }
 
@@ -1337,7 +1388,7 @@ void BodyStream::update()
 	{
 		for(int i = 0; i < bodies.size(); i++)
 		{
-			bodies[i].update();
+			bodies[i]->update();
 		}
 		Stream::update();
 		unlock();
@@ -1380,7 +1431,7 @@ void BodyStream::close()
 	safe_release(stream.p_body_frame_reader);
 	for(int i = 0; i < bodies.size(); i++)
 	{
-		bodies[i].close();
+		bodies[i]->close();
 	}
 }
 

@@ -12,6 +12,9 @@
 
 namespace ofxKinect2
 {
+    static const int        cDepthWidth  = 512;
+    static const int        cDepthHeight = 424;
+
 	void init();
 	class Device;
 	class Stream;
@@ -307,12 +310,10 @@ public:
 	void drawHandRight();
 	void drawHands();
 
-	inline int getId() const
+	inline UINT64 getId() const
 	{
-		UINT64 tracking_id;
-		body->get_TrackingId(&tracking_id);
-		int id = (int)tracking_id;
-		return id;
+		// TODO: Correct tracking ID management
+		return tracking_id;
 	}
 
 	inline HandState getLeftHandState() const { return left_hand_state; }
@@ -327,6 +328,7 @@ public:
 private:
 	Device* device;
 	IBody* body;
+	UINT64 tracking_id;
 	vector<Joint> joints;
 	vector<ofPoint> joint_points;
 
@@ -358,14 +360,14 @@ public:
 
 
 	inline size_t getNumBodies() { return bodies.size(); }
-	const vector<Body> getBodies() { return bodies; }
-	const Body getBody(size_t idx)
+	const vector<Body*> getBodies() { return bodies; }
+	const Body* getBody(UINT64 id)
 	{
 		for(int i = 0; i < bodies.size(); i++)
 		{
-			if(bodies[i].getId() == idx)
+			if(bodies[i]->getId() == id)
 			{
-				return bodies[idx];
+				return bodies[id];
 			}
 		}
 		return bodies[0];
@@ -378,7 +380,7 @@ public:
 
 protected:
 	DoubleBuffer<ofShortPixels> pix;
-	vector<Body> bodies;
+	vector<Body*> bodies;
 
 	bool readFrame(IMultiSourceFrame* p_multi_frame = NULL);
 	void setPixels(Frame frame);
