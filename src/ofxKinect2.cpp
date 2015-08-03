@@ -4,6 +4,7 @@
 
 #include "ofxKinect2.h"
 #include "utils\DepthRemapToRange.h"
+#include <cmath>
 
 namespace ofxKinect2
 {
@@ -702,7 +703,11 @@ bool DepthStream::readFrame(IMultiSourceFrame* p_multi_frame)
 
 		if (SUCCEEDED(hr))
 		{
-			hr = p_frame->AccessUnderlyingBuffer((UINT*)&frame.data_size, reinterpret_cast<UINT16**>(&frame.data));
+			if (frame.data_size == 0) {
+				frame.data_size = frame.width*frame.height;
+				frame.data = new UINT16[frame.width*frame.height];
+			}
+			hr = p_frame->CopyFrameDataToArray(frame.width*frame.height,reinterpret_cast<UINT16*>(frame.data));
 		}
 
 		if (SUCCEEDED(hr))
@@ -735,6 +740,8 @@ void DepthStream::setPixels(Frame frame)
 //----------------------------------------------------------
 void DepthStream::update()
 {
+	if (!texture_needs_update) return;
+
 	if (!tex.isAllocated()
 		|| tex.getWidth() != getWidth()
 		|| tex.getHeight() != getHeight())
@@ -755,12 +762,65 @@ void DepthStream::update()
 
 	if (lock())
 	{
+		// Update the image information
 		ofShortPixels _pix;
 		depthRemapToRange(pix.getFrontBuffer(), _pix, near_value, far_value, is_invert);
 		tex.loadData(_pix);
 		Stream::update();
 		unlock();
 	}
+}
+
+
+void DepthStream::getColorSpacePoints(ColorSpacePoint* colorSpacePointsFromDepth) {
+	if (lock()) {
+		// Calculate the body's position on the screen
+		const UINT depthPointCount = cDepthWidth*cDepthHeight;
+		ICoordinateMapper* m_pCoordinateMapper = NULL;
+		HRESULT hr = device->get().kinect2->get_CoordinateMapper(&m_pCoordinateMapper);
+
+		if(SUCCEEDED(hr))
+		{
+			m_pCoordinateMapper->MapDepthFrameToColorSpace(depthPointCount, (UINT16*)frame.data, depthPointCount, colorSpacePointsFromDepth);
+			//m_pCoordinateMapper->MapDepthFrameToCameraSpace(depthPointCount, (UINT16*)frame.data, depthPointCount, cameraSpacePointsFromDepth);
+		}
+
+		safe_release(m_pCoordinateMapper);
+		unlock();
+	}
+}
+
+const int DepthStream::getNumberColorSpacePoints() {
+	if (frame.data != NULL)
+		return frame.width*frame.height;
+	else
+		return 0;
+}
+
+void DepthStream::getCameraSpacePoints(CameraSpacePoint* cameraSpacePointsFromDepth) {
+	if (lock()) {
+		// Calculate the body's position on the screen
+		const UINT depthPointCount = cDepthWidth*cDepthHeight;
+
+		ICoordinateMapper* m_pCoordinateMapper = NULL;
+		HRESULT hr = device->get().kinect2->get_CoordinateMapper(&m_pCoordinateMapper);
+
+		if(SUCCEEDED(hr))
+		{
+			//m_pCoordinateMapper->MapDepthFrameToColorSpace(depthPointCount, (UINT16*)frame.data, depthPointCount, colorSpacePointsFromDepth);
+			m_pCoordinateMapper->MapDepthFrameToCameraSpace(depthPointCount, (UINT16*)frame.data, depthPointCount, cameraSpacePointsFromDepth);
+		}
+
+		safe_release(m_pCoordinateMapper);
+		unlock();
+	}
+}
+
+const int DepthStream::getNumberCameraSpacePoints() {
+	if (frame.data != NULL)
+		return frame.width*frame.height;
+	else
+		return 0;
 }
 
 //----------------------------------------------------------
@@ -808,6 +868,9 @@ void DepthStream::close()
 	while(!lock()) {
 		printf("DepthStream waiting to close\n");
 	} unlock();
+
+	delete frame.data;
+
 	Stream::close();
 	safe_release(stream.p_depth_frame_reader);
 }

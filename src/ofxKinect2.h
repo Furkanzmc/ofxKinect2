@@ -233,6 +233,12 @@ public:
 	bool open();
 	void close();
 
+	void getColorSpacePoints(ColorSpacePoint*);
+	const int getNumberColorSpacePoints();
+
+	void getCameraSpacePoints(CameraSpacePoint*);
+	const int getNumberCameraSpacePoints();
+
 	void update();
 	bool updateMode();
 
