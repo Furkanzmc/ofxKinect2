@@ -981,6 +981,20 @@ bool IrStream::updateMode()
 //----------------------------------------------------------
 
 //----------------------------------------------------------
+void Body::setup(ofxKinect2::Device& device, IBody* body) {
+	this->device = &device;
+	
+	body->get_HandLeftState(&left_hand_state);
+	body->get_HandRightState(&right_hand_state);
+	
+	// TODO: Correct tracking ID management
+	body->get_TrackingId(&tracking_id);
+	
+	body->GetJoints(JointType_Count,joints);
+}
+
+
+//----------------------------------------------------------
 void Body::close()
 {
 
@@ -989,32 +1003,10 @@ void Body::close()
 //----------------------------------------------------------
 void Body::update()
 {
-	Joint newjoints[JointType_Count];
-	left_hand_state = HandState_Unknown;
-	right_hand_state = HandState_Unknown;
-
-	body->get_HandLeftState(&left_hand_state);
-	body->get_HandRightState(&right_hand_state);
-	
-	// TODO: Correct tracking ID management
-	HRESULT hr = body->get_TrackingId(&tracking_id);
-
-	hr = body->GetJoints(_countof(newjoints), newjoints);
-
-	joints.clear();
-	joints.assign(newjoints, newjoints + JointType_Count);
-	
-	if (joint_points.size() == 0) {
-		for(int i = 0; i < joints.size(); ++i)
-			joint_points.push_back(ofPoint(-1,-1));
-	}
-
-	if(SUCCEEDED(hr))
-	{
-		for(int i = 0; i < joints.size(); ++i)
-		{
-			joint_points[i] = bodyToScreen(joints[i].Position, ofGetWidth(), ofGetHeight());
-		}
+	// Update the 2D joints from the 3D skeleton
+	joint_points.clear();
+	for(int i = 0; i < JointType_Count; ++i) {
+		joint_points.push_back(bodyToScreen(joints[i].Position, ofGetWidth(), ofGetHeight()));
 	}
 }
 
@@ -1220,53 +1212,7 @@ bool BodyStream::readFrame(IMultiSourceFrame* p_multi_frame)
 			{
 				readed = true;
 				righthand_pos_ =  ofPoint(0, 0);
-				float nearest = 10000000;
-				for(int i = 0; i < _countof(ppBodies); ++i)
-				{
-					IBody* pBody = ppBodies[i];
-					if (pBody)
-					{
-					
-						BOOLEAN bTracked = false;
-						hr = pBody->get_IsTracked(&bTracked);
-
-						if (SUCCEEDED(hr) && bTracked)
-						{
-
-							Joint joints[JointType_Count]; 
-							D2D1_POINT_2F jointPoints[JointType_Count];
-							HandState left_hand_state = HandState_Unknown;
-							HandState right_hand_state = HandState_Unknown;
-
-							pBody->get_HandLeftState(&left_hand_state);
-							pBody->get_HandRightState(&right_hand_state);
-
-							HRESULT hr = pBody->GetJoints(_countof(joints), joints);
-
-							if(SUCCEEDED(hr))
-							{
-								// Calculate the body's position on the screen
-								DepthSpacePoint depthPoint = {0};
-								ICoordinateMapper* m_pCoordinateMapper = NULL;
-								hr = device->get().kinect2->get_CoordinateMapper(&m_pCoordinateMapper);
-
-								if(SUCCEEDED(hr))
-								{
-									for (int j = 0; j < _countof(joints); ++j)
-									{
-										m_pCoordinateMapper->MapCameraPointToDepthSpace(joints[j].Position, &depthPoint);
-
-										float screenPointX = static_cast<float>(depthPoint.X * ofGetWindowWidth()) / cDepthWidth;
-										float screenPointY = static_cast<float>(depthPoint.Y * ofGetWindowHeight()) / cDepthHeight;
-								
-									}
-								}
-							
-								safe_release(m_pCoordinateMapper);
-							}
-						}
-					}
-				}
+				
 
 				// Clears the body list
 				for (int b=0 ; b<bodies.size() ; b++) {

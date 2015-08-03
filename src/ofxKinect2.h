@@ -295,11 +295,7 @@ public:
 
 	Body() { }
 
-	void setup(ofxKinect2::Device& device, IBody* body)
-	{
-		this->device = &device;
-		this->body = body;
-	}
+	void setup(ofxKinect2::Device& device, IBody* body);
 
 	void close();
 
@@ -327,9 +323,8 @@ public:
 
 private:
 	Device* device;
-	IBody* body;
 	UINT64 tracking_id;
-	vector<Joint> joints;
+	Joint joints[JointType_Count];
 	vector<ofPoint> joint_points;
 
 	HandState left_hand_state;
