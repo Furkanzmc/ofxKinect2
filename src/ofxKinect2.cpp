@@ -567,6 +567,10 @@ bool ColorStream::open()
 //----------------------------------------------------------
 void ColorStream::close()
 {
+	while(!lock()) {
+		printf("ColorStream waiting to close\n");
+	} unlock();
+
 	Stream::close();
 	safe_release(stream.p_color_frame_reader);
 }
@@ -801,6 +805,9 @@ bool DepthStream::open()
 //----------------------------------------------------------
 void DepthStream::close()
 {
+	while(!lock()) {
+		printf("DepthStream waiting to close\n");
+	} unlock();
 	Stream::close();
 	safe_release(stream.p_depth_frame_reader);
 }
@@ -965,6 +972,10 @@ bool IrStream::open()
 //----------------------------------------------------------
 void IrStream::close()
 {
+	while(!lock()) {
+		printf("IrStream waiting to close\n");
+	} unlock();
+
 	Stream::close();
 	safe_release(stream.p_infrared_frame_reader);
 }
@@ -1372,6 +1383,10 @@ bool BodyStream::open()
 //----------------------------------------------------------
 void BodyStream::close()
 {
+	while(!lock()) {
+		printf("BodyStream waiting to close\n");
+	} unlock();
+
 	Stream::close();
 	safe_release(stream.p_body_frame_reader);
 	for(int i = 0; i < bodies.size(); i++)
