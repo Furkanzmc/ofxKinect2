@@ -361,7 +361,7 @@ public:
 
 
 	inline size_t getNumBodies() { return bodies.size(); }
-	const vector<Body*> getBodies() { return bodies; }
+	const vector<Body*> &getBodies() { return bodies; }
 	const Body* getBody(UINT64 id)
 	{
 		for(int i = 0; i < bodies.size(); i++)
