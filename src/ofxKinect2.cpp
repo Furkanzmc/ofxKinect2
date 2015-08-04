@@ -1109,36 +1109,36 @@ ofPoint Body::bodyToScreen(const CameraSpacePoint& bodyPoint, int width, int hei
 }
 
 //----------------------------------------------------------
-void Body::drawBody()
+void Body::drawBody(bool draw3D)
 {
-	drawBone(JointType_Head, JointType_Neck);
-	drawBone(JointType_Neck, JointType_SpineShoulder);
-	drawBone(JointType_SpineShoulder, JointType_SpineMid);
-	drawBone(JointType_SpineMid, JointType_SpineBase);
-	drawBone(JointType_SpineShoulder, JointType_ShoulderLeft);
-	drawBone(JointType_SpineShoulder, JointType_ShoulderRight);
-	drawBone(JointType_SpineBase, JointType_HipLeft);
-	drawBone(JointType_SpineBase, JointType_HipRight);
+	drawBone(JointType_Head, JointType_Neck, draw3D);
+	drawBone(JointType_Neck, JointType_SpineShoulder, draw3D);
+	drawBone(JointType_SpineShoulder, JointType_SpineMid, draw3D);
+	drawBone(JointType_SpineMid, JointType_SpineBase, draw3D);
+	drawBone(JointType_SpineShoulder, JointType_ShoulderLeft, draw3D);
+	drawBone(JointType_SpineShoulder, JointType_ShoulderRight, draw3D);
+	drawBone(JointType_SpineBase, JointType_HipLeft, draw3D);
+	drawBone(JointType_SpineBase, JointType_HipRight, draw3D);
 
-	drawBone(JointType_ShoulderLeft, JointType_ElbowLeft);
-	drawBone(JointType_ElbowLeft, JointType_WristLeft);
-	drawBone(JointType_WristLeft, JointType_HandLeft);
-	drawBone(JointType_HandLeft, JointType_HandTipLeft);
-	drawBone(JointType_WristLeft, JointType_ThumbLeft);
+	drawBone(JointType_ShoulderLeft, JointType_ElbowLeft, draw3D);
+	drawBone(JointType_ElbowLeft, JointType_WristLeft, draw3D);
+	drawBone(JointType_WristLeft, JointType_HandLeft, draw3D);
+	drawBone(JointType_HandLeft, JointType_HandTipLeft, draw3D);
+	drawBone(JointType_WristLeft, JointType_ThumbLeft, draw3D);
 
-	drawBone(JointType_ShoulderRight, JointType_ElbowRight);
-	drawBone(JointType_ElbowRight, JointType_WristRight);
-	drawBone(JointType_WristRight, JointType_HandRight);
-	drawBone(JointType_HandRight, JointType_HandTipRight);
-	drawBone(JointType_WristRight, JointType_ThumbRight);
+	drawBone(JointType_ShoulderRight, JointType_ElbowRight, draw3D);
+	drawBone(JointType_ElbowRight, JointType_WristRight, draw3D);
+	drawBone(JointType_WristRight, JointType_HandRight, draw3D);
+	drawBone(JointType_HandRight, JointType_HandTipRight, draw3D);
+	drawBone(JointType_WristRight, JointType_ThumbRight, draw3D);
 
-	drawBone(JointType_HipLeft, JointType_KneeLeft);
-	drawBone(JointType_KneeLeft, JointType_AnkleLeft);
-	drawBone(JointType_AnkleLeft, JointType_FootLeft);
+	drawBone(JointType_HipLeft, JointType_KneeLeft, draw3D);
+	drawBone(JointType_KneeLeft, JointType_AnkleLeft, draw3D);
+	drawBone(JointType_AnkleLeft, JointType_FootLeft, draw3D);
 
-	drawBone(JointType_HipRight, JointType_KneeRight);
-	drawBone(JointType_KneeRight, JointType_AnkleRight);
-	drawBone(JointType_AnkleRight, JointType_FootRight);
+	drawBone(JointType_HipRight, JointType_KneeRight, draw3D);
+	drawBone(JointType_KneeRight, JointType_AnkleRight, draw3D);
+	drawBone(JointType_AnkleRight, JointType_FootRight, draw3D);
 
 	ofPushStyle();
 	for(int i = 0; i < JointType_Count; ++i)
@@ -1146,19 +1146,25 @@ void Body::drawBody()
 		if(joints[i].TrackingState == TrackingState_Inferred)
 		{
 			ofSetColor(ofColor::yellow);
-			ofEllipse(joint_points[i], 3, 3);
+			if (draw3D) 
+				ofSphere(joints[i].Position.X,joints[i].Position.Y,joints[i].Position.Z,0.01);
+			else
+				ofEllipse(joint_points[i], 3, 3);
 		}
 		else if(joints[i].TrackingState == TrackingState_Tracked)
 		{
 			ofSetColor(50, 200, 50);
-			ofEllipse(joint_points[i], 3, 3);
+			if (draw3D) 
+				ofSphere(joints[i].Position.X,joints[i].Position.Y,joints[i].Position.Z,0.01);
+			else
+				ofEllipse(joint_points[i], 3, 3);
 		}
 	}
 	ofPopStyle();
 }
 
 //----------------------------------------------------------
-void Body::drawBone(JointType joint0, JointType joint1)
+void Body::drawBone(JointType joint0, JointType joint1, bool draw3D)
 {
 	ofPushStyle();
 	TrackingState state0 = joints[joint0].TrackingState;
@@ -1182,55 +1188,90 @@ void Body::drawBone(JointType joint0, JointType joint1)
 	{
 		ofSetColor(ofColor::gray);
 	}
-	ofLine(joint_points[joint0], joint_points[joint1]);
+	if (draw3D) {
+		ofLine(joints[joint0].Position.X,joints[joint0].Position.Y,joints[joint0].Position.Z,
+				joints[joint1].Position.X,joints[joint1].Position.Y,joints[joint1].Position.Z);
+	} else {
+		ofLine(joint_points[joint0], joint_points[joint1]);
+	}
 	ofPopStyle();
 }
 
 //----------------------------------------------------------
-void Body::drawHands()
+void Body::drawHands(bool draw3D)
 {
-	drawHandLeft();
-	drawHandRight();
+	drawHandLeft(draw3D);
+	drawHandRight(draw3D);
 }
 
 //----------------------------------------------------------
-void Body::drawHandLeft()
+void Body::drawHandLeft(bool draw3D)
 {
 	ofPushStyle();
 	switch(left_hand_state)
 	{
 	case HandState_Closed:
 		ofSetColor(ofColor::red);
-		ofEllipse(joint_points[JointType_HandLeft], 30, 30);
+		if (draw3D)
+			ofSphere(joints[JointType_HandLeft].Position.X, 
+				joints[JointType_HandLeft].Position.Y, 
+				joints[JointType_HandLeft].Position.Z, 0.01);
+		else
+			ofEllipse(joint_points[JointType_HandLeft], 30, 30);
 		break;
 	case HandState_Open:
 		ofSetColor(ofColor::green);
-		ofEllipse(joint_points[JointType_HandLeft], 30, 30);
+		if (draw3D)
+			ofSphere(joints[JointType_HandLeft].Position.X, 
+				joints[JointType_HandLeft].Position.Y, 
+				joints[JointType_HandLeft].Position.Z, 0.01);
+		else
+			ofEllipse(joint_points[JointType_HandLeft], 30, 30);
 		break;
 	case HandState_Lasso:
 		ofSetColor(ofColor::blue);
-		ofEllipse(joint_points[JointType_HandLeft], 30, 30);
+		if (draw3D)
+			ofSphere(joints[JointType_HandLeft].Position.X, 
+				joints[JointType_HandLeft].Position.Y, 
+				joints[JointType_HandLeft].Position.Z, 0.01);
+		else
+			ofEllipse(joint_points[JointType_HandLeft], 30, 30);
 		break;
 	}
 	ofPopStyle();
 }
 
-void Body::drawHandRight()
+void Body::drawHandRight(bool draw3D)
 {
 	ofPushStyle();
 	switch(right_hand_state)
 	{
 	case HandState_Closed:
 		ofSetColor(ofColor::red);
-		ofEllipse(joint_points[JointType_HandRight], 30, 30);
+		if (draw3D)
+			ofSphere(joints[JointType_HandRight].Position.X, 
+				joints[JointType_HandRight].Position.Y, 
+				joints[JointType_HandRight].Position.Z, 0.01);
+		else
+			ofEllipse(joint_points[JointType_HandRight], 30, 30);
 		break;
 	case HandState_Open:
 		ofSetColor(ofColor::green);
-		ofEllipse(joint_points[JointType_HandRight], 30, 30);
+		if (draw3D)
+			ofSphere(joints[JointType_HandRight].Position.X, 
+				joints[JointType_HandRight].Position.Y, 
+				joints[JointType_HandRight].Position.Z, 0.01);
+		else
+			ofEllipse(joint_points[JointType_HandRight], 30, 30);
 		break;
 	case HandState_Lasso:
 		ofSetColor(ofColor::blue);
-		ofEllipse(joint_points[JointType_HandRight], 30, 30);
+		if (draw3D)
+			ofSphere(joints[JointType_HandRight].Position.X, 
+				joints[JointType_HandRight].Position.Y, 
+				joints[JointType_HandRight].Position.Z, 0.01);
+		else
+			ofEllipse(joint_points[JointType_HandRight], 30, 30);
 		break;
 	}
 	ofPopStyle();

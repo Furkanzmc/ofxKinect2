@@ -306,11 +306,11 @@ public:
 	void close();
 
 	void update();
-	void drawBody();
-	void drawBone(JointType joint0, JointType joint1);
-	void drawHandLeft();
-	void drawHandRight();
-	void drawHands();
+	void drawBody(bool draw3D=false);
+	void drawBone(JointType joint0, JointType joint1, bool draw3D=false);
+	void drawHandLeft(bool draw3D=false);
+	void drawHandRight(bool draw3D=false);
+	void drawHands(bool draw3D=false);
 
 	inline UINT64 getId() const
 	{
