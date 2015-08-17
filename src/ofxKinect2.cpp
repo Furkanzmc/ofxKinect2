@@ -221,14 +221,14 @@ void Stream::threadedFunction()
 {
 	while(isThreadRunning() != 0)
 	{
-//		if (lock())
+		if (lock())
 		{
 			if (readFrame())
 			{
 				kinect2_timestamp = frame.timestamp;
 				texture_needs_update = true;
 			}
-//			unlock();
+			unlock();
 		}
 		if (frame.mode.fps != 0)
 		{
