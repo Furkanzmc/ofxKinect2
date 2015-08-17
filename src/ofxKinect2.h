@@ -319,7 +319,7 @@ public:
 	}
 
 	inline HandState getLeftHandState() const { return left_hand_state; }
-	inline HandState getRightHandState() const { return left_hand_state; }
+	inline HandState getRightHandState() const { return right_hand_state; }
 
 	inline size_t getNumJoints() { return JointType_Count; }
 	const Joint& getJoint(size_t idx) { return joints[idx]; }
