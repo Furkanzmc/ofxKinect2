@@ -299,7 +299,7 @@ class ofxKinect2::Body
 public:
 	typedef ofPtr<Body> Ref;
 
-	Body() { }
+	Body() : _init(false) { }
 
 	void setup(ofxKinect2::Device& device, IBody* body);
 
@@ -327,7 +327,10 @@ public:
 	const ofPoint& getJointPoint(size_t idx) { return joint_points[idx]; }
 	const vector<ofPoint> getJointPoints() { return joint_points; }
 
+	bool initialized() { return _init; }
+
 private:
+	bool _init;
 	Device* device;
 	UINT64 tracking_id;
 	Joint joints[JointType_Count];
@@ -361,7 +364,22 @@ public:
 
 
 	inline size_t getNumBodies() { return bodies.size(); }
-	const vector<Body*> &getBodies() { return bodies; }
+	//const vector<Body*> &getBodies() { return bodies; }
+	const Body getBodyUsingIdx(int idx)
+	{
+		Body body;
+		if (lock()) {
+			if (idx < bodies.size()) {
+				body = Body(*bodies[idx]);
+				unlock();
+				return body;
+			}
+			unlock();
+		}
+		
+		return Body();
+	}
+
 	const Body* getBody(UINT64 id)
 	{
 		for(int i = 0; i < bodies.size(); i++)

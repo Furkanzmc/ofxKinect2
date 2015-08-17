@@ -1065,6 +1065,8 @@ void Body::setup(ofxKinect2::Device& device, IBody* body) {
 	body->get_TrackingId(&tracking_id);
 	
 	body->GetJoints(JointType_Count,joints);
+	
+	_init = true;
 }
 
 
