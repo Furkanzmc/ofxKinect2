@@ -72,7 +72,7 @@ public:
 protected:
     DeviceHandle m_Device;
     ICoordinateMapper *m_CoordinateMapper;
-    vector<ofxKinect2::Stream *> m_Streams;
+    std::vector<ofxKinect2::Stream *> m_Streams;
     bool m_IsDepthColorSyncEnabled;
     Recorder *m_Recorder;
 };
@@ -329,7 +329,7 @@ public:
 
 protected:
     DoubleBuffer<ofShortPixels> m_DoubleBuffer;
-    vector<Body *> m_Bodies;
+    std::vector<Body *> m_Bodies;
 
 protected:
     bool readFrame(IMultiSourceFrame *multiFrame = nullptr);
