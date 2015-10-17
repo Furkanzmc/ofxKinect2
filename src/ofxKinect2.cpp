@@ -1682,15 +1682,6 @@ size_t BodyStream::getNumBodies()
     return m_Bodies.size();
 }
 
-const Body *BodyStream::getBodyWithIndex(BodyIndex bodyIndex)
-{
-    if (m_Bodies.size() <= bodyIndex || m_Bodies.size() == 0) {
-        return nullptr;
-    }
-
-    return m_Bodies.at(bodyIndex);
-}
-
 const Body *BodyStream::getBodyUsingIdx(int idx)
 {
     if (lock()) {

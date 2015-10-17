@@ -349,12 +349,12 @@ public:
     void drawHandRight();
 
     size_t getNumBodies();
+
     /**
      * @brief Index 0 is the left most player, 5 is the right-most player
      * @param bodyIndex
      * @return
      */
-    const Body *getBodyWithIndex(BodyIndex bodyIndex);
     const Body *getBodyUsingIdx(int idx);
     const Body *getBody(UINT64 id);
     ofShortPixels &getPixelsRef();
