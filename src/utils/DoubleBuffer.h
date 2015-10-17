@@ -13,54 +13,66 @@ struct DoubleBuffer;
 
 template <typename PixelType>
 struct ofxKinect2::DoubleBuffer {
-public:
 
-    DoubleBuffer() : front_buffer_index(0), back_buffer_index(1), allocated(false) {}
+public:
+    DoubleBuffer()
+        : m_FrontBufferIndex(0)
+        , m_BackBufferIndex(1)
+        , m_IsAllocated(false)
+    {
+
+    }
 
     void allocate(int w, int h, int channels)
     {
-        if (allocated) return;
-        allocated = true;
+        if (m_IsAllocated) {
+            return;
+        }
 
-        pix[0].allocate(w, h, channels);
-        pix[1].allocate(w, h, channels);
+        m_IsAllocated = true;
+        m_Pixels[0].allocate(w, h, channels);
+        m_Pixels[1].allocate(w, h, channels);
     }
 
     void deallocate()
     {
-        if (!allocated) return;
-        allocated = false;
+        if (!m_IsAllocated) {
+            return;
+        }
 
-        pix[0].clear();
-        pix[1].clear();
+        m_IsAllocated = false;
+        m_Pixels[0].clear();
+        m_Pixels[1].clear();
     }
 
     PixelType &getFrontBuffer()
     {
-        return pix[front_buffer_index];
+        return m_Pixels[m_FrontBufferIndex];
     }
+
     const PixelType &getFrontBuffer() const
     {
-        return pix[front_buffer_index];
+        return m_Pixels[m_FrontBufferIndex];
     }
 
     PixelType &getBackBuffer()
     {
-        return pix[back_buffer_index];
+        return m_Pixels[m_BackBufferIndex];
     }
+
     const PixelType &getBackBuffer() const
     {
-        return pix[back_buffer_index];
+        return m_Pixels[m_BackBufferIndex];
     }
 
     void swap()
     {
-        std::swap(front_buffer_index, back_buffer_index);
+        std::swap(m_FrontBufferIndex, m_BackBufferIndex);
     }
 
 private:
+    PixelType m_Pixels[2];
+    int m_FrontBufferIndex, m_BackBufferIndex;
+    bool m_IsAllocated;
 
-    PixelType pix[2];
-    int front_buffer_index, back_buffer_index;
-    bool allocated;
 };

@@ -13,133 +13,122 @@ class MeshGenerator;
 class ofxKinect2::MeshGenerator
 {
 public:
-
-    MeshGenerator() : downsampling_level(1) {}
-
-    void setup(DepthStream &depth_stream)
+    MeshGenerator()
+        : m_DownsamplingLevel(1)
     {
-        float fovH = depth_stream.getHorizontalFieldOfView();
-        float fovV = depth_stream.getVerticalFieldOfView();
 
-        xzFactor = tan(fovH * 0.5) * 2;
-        yzFactor = tan(fovV * 0.5) * -2;
+    }
+
+    void setup(DepthStream &depthStream)
+    {
+        const float fovH = depthStream.getHorizontalFieldOfView();
+        const float fovV = depthStream.getVerticalFieldOfView();
+
+        m_xzFactor = tan(fovH * 0.5) * 2;
+        m_yzFactor = tan(fovV * 0.5) * -2;
     }
 
     const ofMesh &update(const ofShortPixels &depth, const ofPixels &color = ofPixels())
     {
         assert(depth.getNumChannels() == 1);
 
-        const int W = depth.getWidth();
-        const int H = depth.getHeight();
-        const float invW = 1. / W;
-        const float invH = 1. / H;
+        const int depthWidth = depth.getWidth();
+        const int depthHeight = depth.getHeight();
+        const float invW = 1. / depthWidth;
+        const float invH = 1. / depthHeight;
+        const unsigned short *depthPixels = depth.getPixels();
 
-        const unsigned short *depth_pix = depth.getPixels();
+        const bool hasColor = color.isAllocated();
+        const float invByte = 1. / 255.;
+        m_Mesh.setMode(OF_PRIMITIVE_POINTS);
 
-        bool has_color = color.isAllocated();
-        const float inv_byte = 1. / 255.;
+        vector<ofVec3f> &verts = m_Mesh.getVertices();
+        verts.resize((depthWidth / m_DownsamplingLevel) * (depthHeight / m_DownsamplingLevel));
+        int vertIndex = 0;
 
-        mesh.setMode(OF_PRIMITIVE_POINTS);
-
-        const int DS = downsampling_level;
-
-        vector<ofVec3f> &verts = mesh.getVertices();
-        verts.resize((W / DS) * (H / DS));
-
-        int vert_index = 0;
-
-        if (has_color) {
-            const unsigned char *color_pix = color.getPixels();
-
-            vector<ofFloatColor> &cols = mesh.getColors();
-            cols.resize((W / DS) * (H / DS));
+        if (hasColor) {
+            const unsigned char *colorPixel = color.getPixels();
+            vector<ofFloatColor> &colors = m_Mesh.getColors();
+            colors.resize((depthWidth / m_DownsamplingLevel) * (depthHeight / m_DownsamplingLevel));
 
             if (color.getNumChannels() == 1) {
-                for (int y = 0; y < H; y += DS) {
-                    for (int x = 0; x < W; x += DS) {
-                        const int idx = y * W + x;
-
-                        const float Z = depth_pix[idx];
+                for (int y = 0; y < depthHeight; y += m_DownsamplingLevel) {
+                    for (int x = 0; x < depthWidth; x += m_DownsamplingLevel) {
+                        const int idx = y * depthWidth + x;
+                        const float Z = depthPixels[idx];
                         const float normX = x * invW - 0.5;
                         const float normY = y * invH - 0.5;
-                        const float X = normX * xzFactor * Z;
-                        const float Y = normY * yzFactor * Z;
-                        verts[vert_index].set(X, Y, -Z);
+                        const float X = normX * m_xzFactor * Z;
+                        const float Y = normY * m_yzFactor * Z;
+                        verts[vertIndex].set(X, Y, -Z);
 
-                        const unsigned char *C = &color_pix[idx];
-                        cols[vert_index].set(C[0] * inv_byte);
-
-                        vert_index++;
+                        const unsigned char *C = &colorPixel[idx];
+                        colors[vertIndex].set(C[0] * invByte);
+                        vertIndex++;
                     }
                 }
             }
             else if (color.getNumChannels() == 3) {
-                for (int y = 0; y < H; y += DS) {
-                    for (int x = 0; x < W; x += DS) {
-                        const int idx = y * W + x;
-
-                        const float Z = depth_pix[idx];
+                for (int y = 0; y < depthHeight; y += m_DownsamplingLevel) {
+                    for (int x = 0; x < depthWidth; x += m_DownsamplingLevel) {
+                        const int idx = y * depthWidth + x;
+                        const float Z = depthPixels[idx];
                         const float normX = x * invW - 0.5;
                         const float normY = y * invH - 0.5;
-                        const float X = normX * xzFactor * Z;
-                        const float Y = normY * yzFactor * Z;
-                        verts[vert_index].set(X, Y, -Z);
+                        const float X = normX * m_xzFactor * Z;
+                        const float Y = normY * m_yzFactor * Z;
+                        verts[vertIndex].set(X, Y, -Z);
 
-                        const unsigned char *C = &color_pix[idx * 3];
-                        cols[vert_index].set(C[0] * inv_byte,
-                                             C[1] * inv_byte,
-                                             C[2] * inv_byte);
-
-                        vert_index++;
+                        const unsigned char *C = &colorPixel[idx * 3];
+                        colors[vertIndex].set(C[0] * invByte, C[1] * invByte, C[2] * invByte);
+                        vertIndex++;
                     }
                 }
             }
-            else throw;
+            else {
+                throw;
+            }
 
-            mesh.addColors(cols);
+            m_Mesh.addColors(colors);
         }
         else {
-            for (int y = 0; y < H; y += DS) {
-                for (int x = 0; x < W; x += DS) {
-                    int idx = y * W + x;
+            for (int y = 0; y < depthHeight; y += m_DownsamplingLevel) {
+                for (int x = 0; x < depthWidth; x += m_DownsamplingLevel) {
+                    int idx = y * depthWidth + x;
 
-                    float Z = depth_pix[idx];
-                    float X = (x * invW - 0.5) * xzFactor * Z;
-                    float Y = (y * invH - 0.5) * yzFactor * Z;
-                    verts[vert_index].set(X, Y, -Z);
-
-                    vert_index++;
+                    float Z = depthPixels[idx];
+                    float X = (x * invW - 0.5) * m_xzFactor * Z;
+                    float Y = (y * invH - 0.5) * m_yzFactor * Z;
+                    verts[vertIndex].set(X, Y, -Z);
+                    vertIndex++;
                 }
             }
         }
-
-        return mesh;
+        return m_Mesh;
     }
 
     void draw()
     {
-        mesh.draw();
+        m_Mesh.draw();
     }
 
     void setDownsamplingLevel(int level)
     {
-        downsampling_level = level;
+        m_DownsamplingLevel = level;
     }
     int getDownsamplingLevel() const
     {
-        return downsampling_level;
+        return m_DownsamplingLevel;
     }
 
     ofMesh &getMesh()
     {
-        return mesh;
+        return m_Mesh;
     }
 
 protected:
-
-    int downsampling_level;
-
-    ofMesh mesh;
-    float xzFactor, yzFactor;
+    int m_DownsamplingLevel;
+    ofMesh m_Mesh;
+    float m_xzFactor, m_yzFactor;
 
 };

@@ -5,16 +5,16 @@
 
 namespace ofxKinect2
 {
-typedef enum {
+enum Status {
     STATUS_OK = 0,
     STATUS_ERROR = 1,
     STATUS_NOT_IMPLEMENTED = 2,
     STATUS_NOT_SUPPORTED = 3,
     STATUS_NO_DEVICE = 6,
     STATUS_TIME_OUT = 102,
-} Status;
+};
 
-typedef enum {
+enum SensorType {
     SENSOR_NONE = 0,
     SENSOR_COLOR = 0x1,
     SENSOR_IR = 0x2,
@@ -23,22 +23,22 @@ typedef enum {
     SENSOR_BODY_INDEX = 0x10,
     SENSOR_BODY = 0x20,
     SENSOR_AUDIO = 0x40,
-} SensorType;
+};
 
-typedef enum {
+enum PixelFormat {
     PIXEL_FORMAT_NONE = 0,
     PIXEL_FORMAT_RGBA = 1,
     PIXEL_FORMAT_YUV = 2,
     PIXEL_FORMAT_BGRA = 3,
     PIXEL_FORMAT_BAYER = 4,
     PIXEL_FORMAT_YUY2 = 5
-} PixelFormat;
+};
 
-typedef enum {
+enum DeviceState {
     DEVICE_STATE_OK = 0,
     DEVICE_STATE_ERROR = 1,
     DEVICE_STATE_NOT_READY = 2
-} DeviceState;
+};
 } // namespace ofxKinect2
 
 #endif // _OFX_KINECT2_ENUMS_H_

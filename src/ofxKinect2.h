@@ -10,8 +10,8 @@
 
 namespace ofxKinect2
 {
-static const int        cDepthWidth  = 512;
-static const int        cDepthHeight = 424;
+static const int DEPTH_WIDTH = 512;
+static const int DEPTH_HEIGHT = 424;
 
 void init();
 class Device;
@@ -27,11 +27,11 @@ class BodyStream;
 class Recorder;
 
 template<class Interface>
-inline void safe_release(Interface *&p_release)
+inline void safeRelease(Interface *&interfaceToRelease)
 {
-    if (p_release) {
-        p_release->Release();
-        p_release = NULL;
+    if (interfaceToRelease) {
+        interfaceToRelease->Release();
+        interfaceToRelease = nullptr;
     }
 }
 } // namespace ofxKinect2
@@ -42,63 +42,38 @@ class ofxKinect2::Device
     friend class ofxKinect2::Stream;
 
 public:
-    ofEvent<ofEventArgs> updateDevice;
+    ofEvent<ofEventArgs> m_UpdateDeviceEvent;
 
     Device();
     ~Device();
 
     bool setup();
-    bool setup(string kinect2_file_path);
-
+    bool setup(string kinect2FilePath);
     void exit();
-
     void update();
+
     /*
-        bool startRecording(string filename = "");
-        void stopRecording();
-        bool isRecording() const { return recorder != NULL; }
-        */
+     bool startRecording(string filename = "");
+     void stopRecording();
+     bool isRecording() const { return recorder != nullptr; }
+    */
 
-    bool isOpen() const
-    {
-        if (device.kinect2 == NULL) return false;
-        bool b = false;
-        device.kinect2->get_IsOpen((BOOLEAN *)&b);
-        return b;
-    }
+    bool isOpen() const;
+    void setDepthColorSyncEnabled(bool enabled = true);
+    bool isDepthColorSyncEnabled() const;
 
-    void setDepthColorSyncEnabled(bool b = true);
-    bool isDepthColorSyncEnabled() const
-    {
-        return enable_depth_color_sync;
-    }
+    DeviceHandle &get();
+    const DeviceHandle &get() const;
 
-    DeviceHandle &get()
-    {
-        return device;
-    }
-    const DeviceHandle &get() const
-    {
-        return device;
-    }
-
-    ICoordinateMapper *getMapper()
-    {
-        return mapper;
-    }
-    const ICoordinateMapper *getMapper() const
-    {
-        return mapper;
-    }
+    ICoordinateMapper *getMapper();
+    const ICoordinateMapper *getMapper() const;
 
 protected:
-
-    DeviceHandle device;
-    ICoordinateMapper *mapper;
-    vector<ofxKinect2::Stream *> streams;
-    bool enable_depth_color_sync;
-
-    Recorder *recorder;
+    DeviceHandle m_Device;
+    ICoordinateMapper *m_CoordinateMapper;
+    vector<ofxKinect2::Stream *> m_Streams;
+    bool m_IsDepthColorSyncEnabled;
+    Recorder *m_Recorder;
 };
 
 class ofxKinect2::Recorder
@@ -108,12 +83,10 @@ class ofxKinect2::Recorder
 // stream
 class ofxKinect2::Stream : public ofThread
 {
+public:
     friend class ofxKinect2::Device;
 
-public:
-
     virtual ~Stream();
-
     virtual void exit();
 
     virtual bool open();
@@ -122,107 +95,74 @@ public:
     virtual void update();
     virtual bool updateMode();
 
-    bool isOpen() const
-    {
-        bool b = (stream.p_audio_beam_frame_reader != NULL) || (stream.p_body_frame_reader != NULL) || (stream.p_body_index_frame_reader != NULL) || (stream.p_color_frame_reader != NULL) || (stream.p_depth_frame_reader != NULL)
-                 || (stream.p_infrared_frame_reader != NULL) || (stream.p_long_exposure_infrared_frame_reader != NULL);
-        return b;
-    }
+    bool isOpen() const;
 
     int getWidth() const;
-    virtual bool setWidth(int v);
+    virtual bool setWidth(int width);
+
     int getHeight() const;
-    virtual bool setHeight(int v);
+    virtual bool setHeight(int height);
+
     virtual bool setSize(int width, int height);
 
-    ofTexture &getTextureReference()
-    {
-        return tex;
-    }
+    ofTexture &getTextureReference();
 
     int getFps();
-    bool setFps(int v);
+    bool setFps(int fps);
 
-    void setMirror(bool v = true);
-    bool isMirror();
+    void setMirror(bool mirrored = true);
+    bool isMirror() const;
 
-    float getHorizontalFieldOfView();
-    float getVerticalFieldOfView();
-    float getDiagonalFieldOfView();
+    float getHorizontalFieldOfView() const;
+    float getVerticalFieldOfView() const;
+    float getDiagonalFieldOfView() const;
 
-    inline bool isFrameNew() const
-    {
-        return is_frame_new;
-    }
+    bool isFrameNew() const;
 
     void draw(float x = 0, float y = 0);
     virtual void draw(float x, float y, float w, float h);
 
     operator StreamHandle &()
     {
-        return stream;
+        return m_StreamHandle;
     }
+
     operator const StreamHandle &() const
     {
-        return stream;
+        return m_StreamHandle;
     }
 
-    StreamHandle &get()
-    {
-        return stream;
-    }
-    const StreamHandle &get() const
-    {
-        return stream;
-    }
-
-    CameraSettingsHandle &getCameraSettings()
-    {
-        return camera_settings;
-    }
-    const CameraSettingsHandle &getCameraSettings() const
-    {
-        return camera_settings;
-    }
+    StreamHandle &get();
+    const StreamHandle &get() const;
+    CameraSettingsHandle &getCameraSettings();
+    const CameraSettingsHandle &getCameraSettings() const;
 
 protected:
-    Frame frame;
-    StreamHandle stream;
-    CameraSettingsHandle camera_settings;
-    uint64_t kinect2_timestamp, opengl_timestamp;
+    Frame m_Frame;
+    StreamHandle m_StreamHandle;
+    CameraSettingsHandle m_CameraSettings;
+    uint64_t m_Kinect2Timestamp, m_OpenGLTimestamp;
 
-    bool is_frame_new, texture_needs_update;
+    bool m_IsFrameNew,
+         m_IsTextureNeedUpdate,
+         m_IsMirror;
 
-    bool is_mirror;
+    ofTexture m_Texture;
+    Device *m_Device;
 
-    ofTexture tex;
-    Device *device;
-
+protected:
     Stream();
-
     void threadedFunction();
-
-    bool setup(Device &device, SensorType sensor_type);
-    virtual bool readFrame(IMultiSourceFrame *p_multi_frame = NULL);
-    virtual void setPixels(Frame frame);
+    bool setup(Device &device, SensorType sensorType);
+    virtual bool readFrame(IMultiSourceFrame *multiFrame = nullptr);
+    virtual void setPixels(Frame &frame);
 };
 
 class ofxKinect2::ColorStream : public ofxKinect2::Stream
 {
 public:
-    bool setup(ofxKinect2::Device &device)
-    {
-        buffer = NULL;
-        return Stream::setup(device, SENSOR_COLOR);
-    }
-    void exit()
-    {
-        Stream::exit();
-        if (buffer) {
-            delete[] buffer;
-            buffer = NULL;
-        }
-    }
+    bool setup(ofxKinect2::Device &device);
+    void exit();
     bool open();
     void close();
 
@@ -233,15 +173,12 @@ public:
     bool setHeight(int v);
     bool setSize(int width, int height);
 
-    ofPixels &getPixelsRef()
-    {
-        return pix.getFrontBuffer();
-    }
+    ofPixels &getPixelsRef();
 
-    int getExposureTime();
-    int getFrameInterval();
-    float getGain();
-    float getGamma();
+    int getExposureTime() const;
+    int getFrameInterval() const;
+    float getGain() const;
+    float getGamma() const;
 
     /*
     void setAutoExposureEnabled(bool yn = true) {  }
@@ -252,122 +189,85 @@ public:
     */
 
 protected:
-    DoubleBuffer<ofPixels> pix;
-    unsigned char *buffer;
+    DoubleBuffer<ofPixels> m_DoubleBuffer;
+    unsigned char *m_Buffer;
 
-    bool readFrame(IMultiSourceFrame *p_multi_frame = NULL);
-    void setPixels(Frame frame);
+protected:
+    bool readFrame(IMultiSourceFrame *multiFrame = nullptr);
+    void setPixels(Frame &frame);
 };
 
 class ofxKinect2::DepthStream : public ofxKinect2::Stream
 {
 public:
-    bool setup(ofxKinect2::Device &device)
-    {
-        near_value = 50;
-        far_value = 10000;
-        return Stream::setup(device, SENSOR_DEPTH);
-    }
-
+    bool setup(ofxKinect2::Device &device);
     bool open();
     void close();
 
-    void getColorSpacePoints(ColorSpacePoint *);
-    const int getNumberColorSpacePoints();
+    void getColorSpacePoints(ColorSpacePoint *colorSpacePointsFromDepth);
+    int getNumberColorSpacePoints() const;
 
-    void getCameraSpacePoints(CameraSpacePoint *);
-    const int getNumberCameraSpacePoints();
+    void getCameraSpacePoints(CameraSpacePoint *cameraSpacePointsFromDepth);
+    int getNumberCameraSpacePoints() const;
 
     void update();
     bool updateMode();
 
-    ofShortPixels &getPixelsRef()
-    {
-        return pix.getFrontBuffer();
-    }
-    ofShortPixels getPixelsRef(int _near, int _far, bool invert = false);
+    ofShortPixels &getPixelsRef();
+    ofShortPixels getPixelsRef(int nearValue, int farValue, bool invert = false);
 
-    inline void setNear(float _near)
-    {
-        near_value = _near;
-    }
-    inline float getNear() const
-    {
-        return near_value;
-    }
+    void setNear(float nearValue);
+    float getNear() const;
 
-    inline void setFar(float _far)
-    {
-        far_value = _far;
-    }
-    inline float getFar() const
-    {
-        return far_value;
-    }
+    void setFar(float farValue);
+    float getFar() const;
 
-    inline void setInvert(float invert)
-    {
-        is_invert = invert;
-    }
-    inline bool getInvert() const
-    {
-        return is_invert;
-    }
+    void setInvert(float invert);
+    bool getInvert() const;
 
-//  ofVec3f getWorldCoordinateAt(int x, int y);
+//    ofVec3f getWorldCoordinateAt(int x, int y);
 
 protected:
-    DoubleBuffer<ofShortPixels> pix;
+    DoubleBuffer<ofShortPixels> m_DoubleBuffer;
 
-    float near_value;
-    float far_value;
-    bool is_invert;
+    float m_NearValue, m_FarValue;
+    bool m_IsInvert;
 
-    bool readFrame(IMultiSourceFrame *p_multi_frame = NULL);
-    void setPixels(Frame frame);
+protected:
+    bool readFrame(IMultiSourceFrame *multiFrame = nullptr);
+    void setPixels(Frame &frame);
 };
 
 class ofxKinect2::IrStream : public ofxKinect2::Stream
 {
 public:
-
-    bool setup(ofxKinect2::Device &device)
-    {
-        return Stream::setup(device, SENSOR_IR);
-    }
+    bool setup(ofxKinect2::Device &device);
     bool open();
     void close();
 
     void update();
     bool updateMode();
 
-
-    ofShortPixels &getPixelsRef()
-    {
-        return pix.getFrontBuffer();
-    }
+    ofShortPixels &getPixelsRef();
 
 protected:
-    DoubleBuffer<ofShortPixels> pix;
+    DoubleBuffer<ofShortPixels> m_DoubleBuffer;
 
-    bool readFrame(IMultiSourceFrame *p_multi_frame = NULL);
-    void setPixels(Frame frame);
-
+protected:
+    bool readFrame(IMultiSourceFrame *multiFrame = nullptr);
+    void setPixels(Frame &frame);
 
 };
 
 class ofxKinect2::Body
 {
-    friend class BodyStream;
 public:
+    friend class BodyStream;
     typedef ofPtr<Body> Ref;
 
-    Body() : _init(false) { }
-
-    void setup(ofxKinect2::Device &device, IBody *body);
-
+    Body();
+    void setup(ofxKinect2::Device &m_Device, IBody *body);
     void close();
-
     void update();
     void drawBody(bool draw3D = false);
     void drawBone(JointType joint0, JointType joint1, bool draw3D = false);
@@ -375,64 +275,37 @@ public:
     void drawHandRight(bool draw3D = false);
     void drawHands(bool draw3D = false);
 
-    inline UINT64 getId() const
-    {
-        // TODO: Correct tracking ID management
-        return tracking_id;
-    }
+    UINT64 getId() const;
 
-    inline HandState getLeftHandState() const
-    {
-        return left_hand_state;
-    }
-    inline HandState getRightHandState() const
-    {
-        return right_hand_state;
-    }
+    HandState getLeftHandState() const;
+    HandState getRightHandState() const;
 
-    inline size_t getNumJoints()
-    {
-        return JointType_Count;
-    }
-    const Joint &getJoint(size_t idx)
-    {
-        return joints[idx];
-    }
+    size_t getNumJoints();
+    const Joint &getJoint(size_t idx);
 
-    const ofPoint &getJointPoint(size_t idx)
-    {
-        return joint_points[idx];
-    }
-    const vector<ofPoint> getJointPoints()
-    {
-        return joint_points;
-    }
+    const ofPoint &getJointPoint(size_t idx);
+    const vector<ofPoint> &getJointPoints();
 
-    bool initialized()
-    {
-        return _init;
-    }
+    bool IsInitialized();
 
 private:
-    bool _init;
-    Device *device;
-    UINT64 tracking_id;
-    Joint joints[JointType_Count];
-    vector<ofPoint> joint_points;
+    bool m_IsInitialized;
+    Device *m_Device;
+    UINT64 m_TrackingID;
+    Joint m_Joints[JointType_Count];
+    vector<ofPoint> m_JointPoints;
 
-    HandState left_hand_state;
-    HandState right_hand_state;
+    HandState m_LeftHandState;
+    HandState m_RightHandState;
 
+private:
     ofPoint bodyToScreen(const CameraSpacePoint &bodyPoint, int width, int height);
 };
 
 class ofxKinect2::BodyStream : public Stream
 {
 public:
-    bool setup(ofxKinect2::Device &device)
-    {
-        return Stream::setup(device, SENSOR_BODY);
-    }
+    bool setup(ofxKinect2::Device &device);
     bool open();
     void close();
 
@@ -446,96 +319,20 @@ public:
 
     void draw(int x, int y, int w, int h);
 
-
-    inline size_t getNumBodies()
-    {
-        return bodies.size();
-    }
-    //const vector<Body*> &getBodies() { return bodies; }
-    const Body getBodyUsingIdx(int idx)
-    {
-        Body body;
-        if (lock()) {
-            if (idx < bodies.size()) {
-                body = Body(*bodies[idx]);
-                unlock();
-                return body;
-            }
-            unlock();
-        }
-
-        return Body();
-    }
-
-    const Body *getBody(UINT64 id)
-    {
-        for (int i = 0; i < bodies.size(); i++) {
-            if (bodies[i]->getId() == id) {
-                return bodies[id];
-            }
-        }
-        return bodies[0];
-    }
-
-    ofShortPixels &getPixelsRef()
-    {
-        return pix.getFrontBuffer();
-    }
+    size_t getNumBodies();
+    const Body *getBodyUsingIdx(int idx);
+    const Body *getBody(UINT64 id);
+    ofShortPixels &getPixelsRef();
     ofShortPixels getPixelsRef(int _near, int _far, bool invert = false);
 
-    ofPoint righthand_pos_;
+protected:
+    DoubleBuffer<ofShortPixels> m_DoubleBuffer;
+    vector<Body *> m_Bodies;
 
 protected:
-    DoubleBuffer<ofShortPixels> pix;
-    vector<Body *> bodies;
-
-    bool readFrame(IMultiSourceFrame *p_multi_frame = NULL);
-    void setPixels(Frame frame);
+    bool readFrame(IMultiSourceFrame *multiFrame = nullptr);
+    void setPixels(Frame &frame);
 
 };
 
-/*
-class ofxKinect2::ColorMappingStream : public ofxKinect2::Stream
-{
-public:
-    bool setup(ofxKinect2::Device& device)
-    {
-//      c_buffer = new unsigned char[c_width * c_height];
-//      color_map = new ColorSpacePoint[d_width * d_height];
-        return Stream::setup(device, SENSOR_DEPTH);
-    }
-
-    void exit()
-    {
-        Stream::exit();
-        if (c_buffer)
-        {
-            delete[] c_buffer;
-            c_buffer = NULL;
-        }
-
-        if (color_map)
-        {
-            delete[] color_map;
-            color_map = NULL;
-        }
-    }
-    bool open();
-    void close();
-
-    void update();
-    bool updateMode();
-
-    ofPixels& getPixelsRef() { return pix.getFrontBuffer(); }
-
-protected:
-    DoubleBuffer<ofPixels> pix;
-    BYTE* c_buffer;
-    ColorSpacePoint* color_map;
-
-    bool readFrame(IMultiSourceFrame* p_multi_frame = NULL);
-    void setPixels(Frame frame);
-};
-/**/
-
-#endif // OFX_KINECT2_H
+#endif //OFX_KINECT2_H
