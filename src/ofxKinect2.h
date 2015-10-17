@@ -21,6 +21,7 @@ class Stream;
 class IrStream;
 class ColorStream;
 class DepthStream;
+class BodyIndexStream;
 
 class Body;
 class BodyStream;
@@ -232,6 +233,33 @@ protected:
     DoubleBuffer<ofShortPixels> m_DoubleBuffer;
 
     float m_NearValue, m_FarValue;
+    bool m_IsInvert;
+
+protected:
+    bool readFrame(IMultiSourceFrame *multiFrame = nullptr);
+    void setPixels(Frame &frame);
+};
+
+//----------------------------------------------------------
+#pragma mark BodyIndexStream
+//----------------------------------------------------------
+
+class ofxKinect2::BodyIndexStream : public ofxKinect2::Stream
+{
+public:
+    bool open();
+    void close();
+
+    void update();
+    bool updateMode();
+
+    bool setup(ofxKinect2::Device &device);
+    const ofShortPixels &getPixelsRef() const;
+    void setInvert(float invert);
+    bool getInvert() const;
+
+protected:
+    DoubleBuffer<ofShortPixels> m_DoubleBuffer;
     bool m_IsInvert;
 
 protected:

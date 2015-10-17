@@ -886,6 +886,208 @@ bool DepthStream::updateMode()
 }
 
 //----------------------------------------------------------
+#pragma mark - BodyIndexStream
+//----------------------------------------------------------
+
+bool BodyIndexStream::readFrame(IMultiSourceFrame *multiFrame)
+{
+    bool isSuccess = false;
+    if (!m_StreamHandle.depthFrameReader) {
+        ofLogWarning("ofxKinect2::BodyIndexStream") << "Stream is not open.";
+        return isSuccess;
+    }
+
+    Stream::readFrame(multiFrame);
+    IBodyIndexFrame *bodyIndexFrame = nullptr;
+
+    HRESULT hr = E_FAIL;
+    if (!multiFrame) {
+        hr = m_StreamHandle.bodyIndexFrameReader->AcquireLatestFrame(&bodyIndexFrame);
+    }
+    else {
+        IBodyIndexFrameReference *frameReference = nullptr;
+        hr = multiFrame->get_BodyIndexFrameReference(&frameReference);
+
+        if (SUCCEEDED(hr)) {
+            hr = frameReference->AcquireFrame(&bodyIndexFrame);
+        }
+
+        safeRelease(frameReference);
+    }
+
+    if (SUCCEEDED(hr)) {
+        IFrameDescription *frameDescription = nullptr;
+
+        hr = bodyIndexFrame->get_RelativeTime((INT64 *)&m_Frame.timestamp);
+        if (SUCCEEDED(hr)) {
+            hr = bodyIndexFrame->get_FrameDescription(&frameDescription);
+        }
+
+        if (SUCCEEDED(hr)) {
+            hr = frameDescription->get_Width(&m_Frame.width);
+        }
+
+        if (SUCCEEDED(hr)) {
+            hr = frameDescription->get_Height(&m_Frame.height);
+        }
+
+        if (SUCCEEDED(hr)) {
+            hr = frameDescription->get_HorizontalFieldOfView(&m_Frame.horizontalFieldOfView);
+        }
+
+        if (SUCCEEDED(hr)) {
+            hr = frameDescription->get_VerticalFieldOfView(&m_Frame.verticalFieldOfView);
+        }
+
+        if (SUCCEEDED(hr)) {
+            hr = frameDescription->get_DiagonalFieldOfView(&m_Frame.diagonalFieldOfView);
+        }
+
+        if (SUCCEEDED(hr)) {
+            hr = bodyIndexFrame->AccessUnderlyingBuffer((UINT *)&m_Frame.dataSize, reinterpret_cast<BYTE **>(&m_Frame.data));
+        }
+
+        if (SUCCEEDED(hr)) {
+            isSuccess = true;
+            setPixels(m_Frame);
+        }
+        safeRelease(frameDescription);
+    }
+
+    safeRelease(bodyIndexFrame);
+
+    return isSuccess;
+}
+
+void BodyIndexStream::setPixels(Frame &frame)
+{
+    Stream::setPixels(frame);
+
+    const BYTE *pixels = reinterpret_cast<const BYTE *>(frame.data);
+    ofShortPixels pxs;
+    pxs.allocate(frame.width, frame.height, OF_IMAGE_GRAYSCALE);
+    for (int i = 0; i < frame.dataSize; i++) {
+        if (pixels[i] < 6) {
+            //This pixel belongs to a player
+            pxs.setColor(i, ofColor::black);
+        }
+        else {
+            pxs.setColor(i, ofColor::white);
+        }
+    }
+
+    m_DoubleBuffer.getBackBuffer().setFromPixels(pxs.getPixels(), frame.width, frame.height, OF_IMAGE_GRAYSCALE);
+    m_DoubleBuffer.swap();
+}
+
+void BodyIndexStream::update()
+{
+    if (!m_IsTextureNeedUpdate) {
+        return;
+    }
+
+    if (!m_Texture.isAllocated() || m_Texture.getWidth() != getWidth() || m_Texture.getHeight() != getHeight()) {
+#if OF_VERSION_MINOR <= 7
+        static ofTextureData data;
+
+        data.pixelType = GL_UNSIGNED_SHORT;
+        data.glTypeInternal = GL_LUMINANCE16;
+        data.width = getWidth();
+        data.height = getHeight();
+
+        m_Texture.allocate(data);
+#elif OF_VERSION_MINOR > 7
+        m_Texture.allocate(getWidth(), getHeight(), GL_RGBA, true, GL_LUMINANCE, GL_UNSIGNED_SHORT);
+#endif
+    }
+
+    if (lock()) {
+        m_Texture.loadData(m_DoubleBuffer.getFrontBuffer());
+        unlock();
+    }
+    Stream::update();
+}
+
+bool BodyIndexStream::setup(ofxKinect2::Device &device)
+{
+    return Stream::setup(device, SensorType::SENSOR_BODY_INDEX);
+}
+
+const ofShortPixels &BodyIndexStream::getPixelsRef() const
+{
+    return m_DoubleBuffer.getFrontBuffer();
+}
+
+void BodyIndexStream::setInvert(float invert)
+{
+    m_IsInvert = invert;
+}
+
+bool BodyIndexStream::getInvert() const
+{
+    return m_IsInvert;
+}
+
+bool BodyIndexStream::open()
+{
+    if (!m_Device->isOpen()) {
+        ofLogWarning("ofxKinect2::BodyIndexStream") << "No ready Kinect2 found.";
+        return false;
+    }
+
+    m_IsInvert = true;
+    IBodyIndexFrameSource *frameSource = nullptr;
+    HRESULT hr = E_FAIL;
+
+    hr = m_Device->get().kinect2->get_BodyIndexFrameSource(&frameSource);
+    if (SUCCEEDED(hr)) {
+        hr = frameSource->OpenReader(&m_StreamHandle.bodyIndexFrameReader);
+
+        if (SUCCEEDED(hr)) {
+            IFrameDescription *frameDescription = nullptr;
+            frameSource->get_FrameDescription(&frameDescription);
+            if (SUCCEEDED(hr)) {
+                int resX, resY = 0;
+                hr = frameDescription->get_Width(&resX);
+                hr = frameDescription->get_Width(&resY);
+                m_Frame.mode.resolutionX = resX;
+                m_Frame.mode.resolutionY = resY;
+                m_Frame.width = resX;
+                m_Frame.height = resY;
+                m_DoubleBuffer.allocate(resX, resY, 4);
+
+            }
+            safeRelease(frameDescription);
+        }
+    }
+
+    safeRelease(frameSource);
+    if (FAILED(hr)) {
+        ofLogWarning("ofxKinect2::BodyIndexStream") << "Can't open stream.";
+        return false;
+    }
+
+    return Stream::open();
+}
+
+void BodyIndexStream::close()
+{
+    while (!lock()) {
+        printf("DepthStream waiting to close\n");
+    }
+    unlock();
+
+    safeRelease(m_StreamHandle.bodyIndexFrameReader);
+    Stream::close();
+}
+
+bool BodyIndexStream::updateMode()
+{
+    ofLogWarning("ofxKinect2::BodyIndexStream") << "Not supported yet.";
+    return false;
+}
+
+//----------------------------------------------------------
 #pragma mark - IrStream
 //----------------------------------------------------------
 
