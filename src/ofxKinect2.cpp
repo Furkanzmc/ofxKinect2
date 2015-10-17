@@ -1180,74 +1180,51 @@ void Body::drawHands(bool draw3D)
     drawHandRight(draw3D);
 }
 
+void Body::drawHand(JointType handType, bool draw3D)
+{
+    if (handType == JointType_HandLeft || handType == JointType_HandRight) {
+        ofPushStyle();
+        switch (m_LeftHandState) {
+        case HandState_Closed:
+            ofSetColor(ofColor::red);
+            if (draw3D) {
+                ofSphere(m_Joints[handType].Position.X, m_Joints[handType].Position.Y, m_Joints[handType].Position.Z, 0.01);
+            }
+            else {
+                ofEllipse(m_JointPoints[handType], 30, 30);
+            }
+            break;
+        case HandState_Open:
+            ofSetColor(ofColor::green);
+            if (draw3D) {
+                ofSphere(m_Joints[handType].Position.X, m_Joints[handType].Position.Y, m_Joints[handType].Position.Z, 0.01);
+            }
+            else {
+                ofEllipse(m_JointPoints[handType], 30, 30);
+            }
+            break;
+        case HandState_Lasso:
+            ofSetColor(ofColor::blue);
+            if (draw3D) {
+                ofSphere(m_Joints[handType].Position.X, m_Joints[handType].Position.Y, m_Joints[handType].Position.Z, 0.01);
+            }
+            else {
+                ofEllipse(m_JointPoints[handType], 30, 30);
+            }
+            break;
+        }
+        ofPopStyle();
+    }
+}
+
 void Body::drawHandLeft(bool draw3D)
 {
-    ofPushStyle();
-    switch (m_LeftHandState) {
-    case HandState_Closed:
-        ofSetColor(ofColor::red);
-        if (draw3D) {
-            ofSphere(m_Joints[JointType_HandLeft].Position.X, m_Joints[JointType_HandLeft].Position.Y, m_Joints[JointType_HandLeft].Position.Z, 0.01);
-        }
-        else {
-            ofEllipse(m_JointPoints[JointType_HandLeft], 30, 30);
-        }
-        break;
-    case HandState_Open:
-        ofSetColor(ofColor::green);
-        if (draw3D) {
-            ofSphere(m_Joints[JointType_HandLeft].Position.X, m_Joints[JointType_HandLeft].Position.Y, m_Joints[JointType_HandLeft].Position.Z, 0.01);
-        }
-        else {
-            ofEllipse(m_JointPoints[JointType_HandLeft], 30, 30);
-        }
-        break;
-    case HandState_Lasso:
-        ofSetColor(ofColor::blue);
-        if (draw3D) {
-            ofSphere(m_Joints[JointType_HandLeft].Position.X, m_Joints[JointType_HandLeft].Position.Y, m_Joints[JointType_HandLeft].Position.Z, 0.01);
-        }
-        else {
-            ofEllipse(m_JointPoints[JointType_HandLeft], 30, 30);
-        }
-        break;
-    }
-    ofPopStyle();
+    drawHand(JointType_HandLeft, draw3D);
 }
 
 void Body::drawHandRight(bool draw3D)
 {
-    ofPushStyle();
-    switch (m_RightHandState) {
-    case HandState_Closed:
-        ofSetColor(ofColor::red);
-        if (draw3D) {
-            ofSphere(m_Joints[JointType_HandRight].Position.X, m_Joints[JointType_HandRight].Position.Y, m_Joints[JointType_HandRight].Position.Z, 0.01);
-        }
-        else {
-            ofEllipse(m_JointPoints[JointType_HandRight], 30, 30);
-        }
-        break;
-    case HandState_Open:
-        ofSetColor(ofColor::green);
-        if (draw3D) {
-            ofSphere(m_Joints[JointType_HandRight].Position.X, m_Joints[JointType_HandRight].Position.Y, m_Joints[JointType_HandRight].Position.Z, 0.01);
-        }
-        else {
-            ofEllipse(m_JointPoints[JointType_HandRight], 30, 30);
-        }
-        break;
-    case HandState_Lasso:
-        ofSetColor(ofColor::blue);
-        if (draw3D) {
-            ofSphere(m_Joints[JointType_HandRight].Position.X, m_Joints[JointType_HandRight].Position.Y, m_Joints[JointType_HandRight].Position.Z, 0.01);
-        }
-        else {
-            ofEllipse(m_JointPoints[JointType_HandRight], 30, 30);
-        }
-        break;
-    }
-    ofPopStyle();
+    drawHand(JointType_HandRight, draw3D);
 }
 
 UINT64 Body::getId() const

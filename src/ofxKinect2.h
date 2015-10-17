@@ -272,6 +272,7 @@ public:
     void update();
     void drawBody(bool draw3D = false);
     void drawBone(JointType joint0, JointType joint1, bool draw3D = false);
+    void drawHand(JointType handType, bool draw3D = false);
     void drawHandLeft(bool draw3D = false);
     void drawHandRight(bool draw3D = false);
     void drawHands(bool draw3D = false);
