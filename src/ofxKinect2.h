@@ -38,7 +38,9 @@ inline void safeRelease(Interface *&interfaceToRelease)
 }
 } // namespace ofxKinect2
 
-// device
+//----------------------------------------------------------
+#pragma mark - Device
+//----------------------------------------------------------
 class ofxKinect2::Device
 {
     friend class ofxKinect2::Stream;
@@ -53,12 +55,6 @@ public:
     bool setup(string kinect2FilePath);
     void exit();
     void update();
-
-    /*
-     bool startRecording(string filename = "");
-     void stopRecording();
-     bool isRecording() const { return recorder != nullptr; }
-    */
 
     bool isOpen() const;
     void setDepthColorSyncEnabled(bool enabled = true);
@@ -82,22 +78,26 @@ class ofxKinect2::Recorder
 {
 };
 
-// stream
+//----------------------------------------------------------
+#pragma mark - Stream
+//----------------------------------------------------------
 class ofxKinect2::Stream : public ofThread
 {
 public:
     friend class ofxKinect2::Device;
 
     virtual ~Stream();
-    virtual void exit();
-
     virtual bool open();
     virtual void close();
+    virtual void exit();
 
     virtual void update();
     virtual bool updateMode();
 
     bool isOpen() const;
+
+    virtual bool setSize(int width, int height);
+    ofTexture &getTextureReference();
 
     int getWidth() const;
     virtual bool setWidth(int width);
@@ -105,15 +105,8 @@ public:
     int getHeight() const;
     virtual bool setHeight(int height);
 
-    virtual bool setSize(int width, int height);
-
-    ofTexture &getTextureReference();
-
-    int getFps();
+    int getFps() const;
     bool setFps(int fps);
-
-    void setMirror(bool mirrored = true);
-    bool isMirror() const;
 
     float getHorizontalFieldOfView() const;
     float getVerticalFieldOfView() const;
@@ -121,8 +114,16 @@ public:
 
     bool isFrameNew() const;
 
+    void setMirror(bool mirrored = true);
+    bool isMirror() const;
+
     void draw(float x = 0, float y = 0);
     virtual void draw(float x, float y, float w, float h);
+
+    StreamHandle &get();
+    const StreamHandle &get() const;
+    CameraSettingsHandle &getCameraSettings();
+    const CameraSettingsHandle &getCameraSettings() const;
 
     operator StreamHandle &()
     {
@@ -133,11 +134,6 @@ public:
     {
         return m_StreamHandle;
     }
-
-    StreamHandle &get();
-    const StreamHandle &get() const;
-    CameraSettingsHandle &getCameraSettings();
-    const CameraSettingsHandle &getCameraSettings() const;
 
 protected:
     Frame m_Frame;
@@ -160,6 +156,9 @@ protected:
     virtual void setPixels(Frame &frame);
 };
 
+//----------------------------------------------------------
+#pragma mark - ColorStream
+//----------------------------------------------------------
 class ofxKinect2::ColorStream : public ofxKinect2::Stream
 {
 public:
@@ -182,14 +181,6 @@ public:
     float getGain() const;
     float getGamma() const;
 
-    /*
-    void setAutoExposureEnabled(bool yn = true) {  }
-    bool getAutoExposureEnabled() {  }
-
-    void setAutoWhiteBalanceEnabled(bool yn = true) {  }
-    bool getAutoWhiteBalanceEnabled() {  }
-    */
-
 protected:
     DoubleBuffer<ofPixels> m_DoubleBuffer;
     unsigned char *m_Buffer;
@@ -199,21 +190,23 @@ protected:
     void setPixels(Frame &frame);
 };
 
+//----------------------------------------------------------
+#pragma mark - DepthStream
+//----------------------------------------------------------
 class ofxKinect2::DepthStream : public ofxKinect2::Stream
 {
 public:
     bool setup(ofxKinect2::Device &device);
     bool open();
     void close();
+    void update();
+    bool updateMode();
 
     void getColorSpacePoints(ColorSpacePoint *colorSpacePointsFromDepth);
     int getNumberColorSpacePoints() const;
 
-    void getCameraSpacePoints(CameraSpacePoint *cameraSpacePointsFromDepth);
     int getNumberCameraSpacePoints() const;
-
-    void update();
-    bool updateMode();
+    void getCameraSpacePoints(CameraSpacePoint *cameraSpacePointsFromDepth);
 
     ofShortPixels &getPixelsRef();
     ofShortPixels getPixelsRef(int nearValue, int farValue, bool invert = false);
@@ -226,8 +219,6 @@ public:
 
     void setInvert(float invert);
     bool getInvert() const;
-
-//    ofVec3f getWorldCoordinateAt(int x, int y);
 
 protected:
     DoubleBuffer<ofShortPixels> m_DoubleBuffer;
@@ -267,6 +258,9 @@ protected:
     void setPixels(Frame &frame);
 };
 
+//----------------------------------------------------------
+#pragma mark - IrStream
+//----------------------------------------------------------
 class ofxKinect2::IrStream : public ofxKinect2::Stream
 {
 public:
@@ -288,6 +282,9 @@ protected:
 
 };
 
+//----------------------------------------------------------
+#pragma mark - Body
+//----------------------------------------------------------
 class ofxKinect2::Body
 {
 public:
@@ -332,6 +329,9 @@ private:
     ofPoint bodyToScreen(const CameraSpacePoint &bodyPoint, int width, int height);
 };
 
+//----------------------------------------------------------
+#pragma mark - BodyStream
+//----------------------------------------------------------
 class ofxKinect2::BodyStream : public Stream
 {
 public:
@@ -342,12 +342,11 @@ public:
     void update();
     bool updateMode();
 
-    void draw();
+    void draw(bool draw3D = false);
     void drawHands();
     void drawHandLeft();
     void drawHandRight();
 
-    void draw(int x, int y, int w, int h);
 
     size_t getNumBodies();
     const Body *getBodyUsingIdx(int idx);

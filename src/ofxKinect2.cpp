@@ -164,44 +164,6 @@ Stream::~Stream()
 
 }
 
-bool Stream::setup(Device &device, SensorType sensorType)
-{
-    if (!device.isOpen()) {
-        return false;
-    }
-
-    m_Kinect2Timestamp = 0;
-    m_OpenGLTimestamp = 0;
-    m_Frame.sensorType = sensorType;
-    m_Frame.mode.fps = 0;
-    m_Frame.frameIndex = 0;
-    m_Frame.stride = 0;
-    m_Frame.data = nullptr;
-    m_Frame.dataSize = 0;
-    m_IsFrameNew = false;
-    m_IsTextureNeedUpdate = false;
-
-    device.m_Streams.push_back(this);
-    this->m_Device = &device;
-
-    setMirror(false);
-    return true;
-}
-
-void Stream::exit()
-{
-    for (vector<Stream *>::iterator it = m_Device->m_Streams.begin(); it != m_Device->m_Streams.end();) {
-        Stream *stream = *it;
-        if (stream == this) {
-            it = m_Device->m_Streams.erase(it);
-            close();
-        }
-        else {
-            ++it;
-        }
-    }
-}
-
 bool Stream::open()
 {
     startThread();
@@ -217,30 +179,18 @@ void Stream::close()
     stopThread();
 }
 
-void Stream::threadedFunction()
+void Stream::exit()
 {
-    while (isThreadRunning() != 0) {
-        if (lock()) {
-            if (readFrame()) {
-                m_Kinect2Timestamp = m_Frame.timestamp;
-                m_IsTextureNeedUpdate = true;
-            }
-            unlock();
+    for (vector<Stream *>::iterator it = m_Device->m_Streams.begin(); it != m_Device->m_Streams.end();) {
+        Stream *stream = *it;
+        if (stream == this) {
+            it = m_Device->m_Streams.erase(it);
+            close();
         }
-        if (m_Frame.mode.fps != 0) {
-            ofSleepMillis(1000.f / m_Frame.mode.fps);
+        else {
+            ++it;
         }
     }
-}
-
-bool Stream::readFrame(IMultiSourceFrame *multiFrame)
-{
-    return false;
-}
-
-void Stream::setPixels(Frame &frame)
-{
-    m_Kinect2Timestamp = frame.timestamp;
 }
 
 void Stream::update()
@@ -279,14 +229,14 @@ int Stream::getWidth() const
     return m_Frame.width;
 }
 
-int Stream::getHeight() const
-{
-    return m_Frame.height;
-}
-
 bool Stream::setWidth(int width)
 {
     return setSize(width, getHeight());
+}
+
+int Stream::getHeight() const
+{
+    return m_Frame.height;
 }
 
 bool Stream::setHeight(int height)
@@ -294,7 +244,7 @@ bool Stream::setHeight(int height)
     return setSize(getWidth(), height);
 }
 
-int Stream::getFps()
+int Stream::getFps() const
 {
     return m_Frame.mode.fps;
 }
@@ -369,6 +319,56 @@ CameraSettingsHandle &Stream::getCameraSettings()
 const CameraSettingsHandle &Stream::getCameraSettings() const
 {
     return m_CameraSettings;
+}
+
+bool Stream::setup(Device &device, SensorType sensorType)
+{
+    if (!device.isOpen()) {
+        return false;
+    }
+
+    m_Kinect2Timestamp = 0;
+    m_OpenGLTimestamp = 0;
+    m_Frame.sensorType = sensorType;
+    m_Frame.mode.fps = 0;
+    m_Frame.frameIndex = 0;
+    m_Frame.stride = 0;
+    m_Frame.data = nullptr;
+    m_Frame.dataSize = 0;
+    m_IsFrameNew = false;
+    m_IsTextureNeedUpdate = false;
+
+    device.m_Streams.push_back(this);
+    this->m_Device = &device;
+
+    setMirror(false);
+    return true;
+}
+
+void Stream::threadedFunction()
+{
+    while (isThreadRunning() != 0) {
+        if (lock()) {
+            if (readFrame()) {
+                m_Kinect2Timestamp = m_Frame.timestamp;
+                m_IsTextureNeedUpdate = true;
+            }
+            unlock();
+        }
+        if (m_Frame.mode.fps != 0) {
+            ofSleepMillis(1000.f / m_Frame.mode.fps);
+        }
+    }
+}
+
+bool Stream::readFrame(IMultiSourceFrame *multiFrame)
+{
+    return false;
+}
+
+void Stream::setPixels(Frame &frame)
+{
+    m_Kinect2Timestamp = frame.timestamp;
 }
 
 //----------------------------------------------------------
@@ -466,46 +466,6 @@ void ColorStream::setPixels(Frame &frame)
     m_DoubleBuffer.swap();
 }
 
-bool ColorStream::setWidth(int width)
-{
-    bool ret = Stream::setWidth(width);
-    m_DoubleBuffer.deallocate();
-    m_DoubleBuffer.allocate(m_Frame.width, m_Frame.height, 4);
-    return ret;
-}
-
-bool ColorStream::setHeight(int height)
-{
-    bool ret = Stream::setHeight(height);
-    m_DoubleBuffer.allocate(m_Frame.width, m_Frame.height, 4);
-    return ret;
-}
-
-bool ColorStream::setSize(int width, int height)
-{
-    bool ret = Stream::setSize(width, height);
-    m_DoubleBuffer.allocate(m_Frame.width, m_Frame.height, 4);
-    return ret;
-}
-
-ofPixels &ColorStream::getPixelsRef()
-{
-    return m_DoubleBuffer.getFrontBuffer();
-}
-
-void ColorStream::update()
-{
-    if (!m_Texture.isAllocated() || m_Texture.getWidth() != getWidth() || m_Texture.getHeight() != getHeight()) {
-        m_Texture.allocate(getWidth(), getHeight(), GL_RGB);
-    }
-
-    if (lock()) {
-        m_Texture.loadData(m_DoubleBuffer.getFrontBuffer());
-        Stream::update();
-        unlock();
-    }
-}
-
 bool ColorStream::setup(ofxKinect2::Device &device)
 {
     m_Buffer = nullptr;
@@ -571,10 +531,50 @@ void ColorStream::close()
     safeRelease(m_StreamHandle.colorFrameReader);
 }
 
+void ColorStream::update()
+{
+    if (!m_Texture.isAllocated() || m_Texture.getWidth() != getWidth() || m_Texture.getHeight() != getHeight()) {
+        m_Texture.allocate(getWidth(), getHeight(), GL_RGB);
+    }
+
+    if (lock()) {
+        m_Texture.loadData(m_DoubleBuffer.getFrontBuffer());
+        Stream::update();
+        unlock();
+    }
+}
+
 bool ColorStream::updateMode()
 {
     ofLogWarning("ofxKinect2::ColorStream") << "Not supported yet.";
     return false;
+}
+
+bool ColorStream::setWidth(int width)
+{
+    bool ret = Stream::setWidth(width);
+    m_DoubleBuffer.deallocate();
+    m_DoubleBuffer.allocate(m_Frame.width, m_Frame.height, 4);
+    return ret;
+}
+
+bool ColorStream::setHeight(int height)
+{
+    bool ret = Stream::setHeight(height);
+    m_DoubleBuffer.allocate(m_Frame.width, m_Frame.height, 4);
+    return ret;
+}
+
+bool ColorStream::setSize(int width, int height)
+{
+    bool ret = Stream::setSize(width, height);
+    m_DoubleBuffer.allocate(m_Frame.width, m_Frame.height, 4);
+    return ret;
+}
+
+ofPixels &ColorStream::getPixelsRef()
+{
+    return m_DoubleBuffer.getFrontBuffer();
 }
 
 int ColorStream::getExposureTime() const
@@ -706,6 +706,53 @@ void DepthStream::setPixels(Frame &frame)
     m_DoubleBuffer.swap();
 }
 
+bool DepthStream::setup(ofxKinect2::Device &device)
+{
+    m_NearValue = 50;
+    m_FarValue = 10000;
+    return Stream::setup(device, SENSOR_DEPTH);
+}
+
+bool DepthStream::open()
+{
+    if (!m_Device->isOpen()) {
+        ofLogWarning("ofxKinect2::DepthStream") << "No ready Kinect2 found.";
+        return false;
+    }
+
+    m_IsInvert = true;
+    m_NearValue = 0;
+    m_FarValue = 10000;
+    IDepthFrameSource *depthFrameSource = nullptr;
+    HRESULT hr = m_Device->get().kinect2->get_DepthFrameSource(&depthFrameSource);
+
+    if (SUCCEEDED(hr)) {
+        hr = depthFrameSource->OpenReader(&m_StreamHandle.depthFrameReader);
+    }
+
+    safeRelease(depthFrameSource);
+    if (FAILED(hr)) {
+        ofLogWarning("ofxKinect2::DepthStream") << "Can't open stream.";
+        return false;
+    }
+
+    return Stream::open();
+}
+
+void DepthStream::close()
+{
+    while (!lock()) {
+        printf("DepthStream waiting to close\n");
+    }
+    unlock();
+
+    delete m_Frame.data;
+    m_Frame.data = nullptr;
+
+    Stream::close();
+    safeRelease(m_StreamHandle.depthFrameReader);
+}
+
 void DepthStream::update()
 {
     if (!m_IsTextureNeedUpdate) {
@@ -736,6 +783,11 @@ void DepthStream::update()
     }
 }
 
+bool DepthStream::updateMode()
+{
+    ofLogWarning("ofxKinect2::DepthStream") << "Not supported yet.";
+    return false;
+}
 
 void DepthStream::getColorSpacePoints(ColorSpacePoint *colorSpacePointsFromDepth)
 {
@@ -830,59 +882,6 @@ void DepthStream::setInvert(float invert)
 bool DepthStream::getInvert() const
 {
     return m_IsInvert;
-}
-
-bool DepthStream::setup(ofxKinect2::Device &device)
-{
-    m_NearValue = 50;
-    m_FarValue = 10000;
-    return Stream::setup(device, SENSOR_DEPTH);
-}
-
-bool DepthStream::open()
-{
-    if (!m_Device->isOpen()) {
-        ofLogWarning("ofxKinect2::DepthStream") << "No ready Kinect2 found.";
-        return false;
-    }
-
-    m_IsInvert = true;
-    m_NearValue = 0;
-    m_FarValue = 10000;
-    IDepthFrameSource *depthFrameSource = nullptr;
-    HRESULT hr = m_Device->get().kinect2->get_DepthFrameSource(&depthFrameSource);
-
-    if (SUCCEEDED(hr)) {
-        hr = depthFrameSource->OpenReader(&m_StreamHandle.depthFrameReader);
-    }
-
-    safeRelease(depthFrameSource);
-    if (FAILED(hr)) {
-        ofLogWarning("ofxKinect2::DepthStream") << "Can't open stream.";
-        return false;
-    }
-
-    return Stream::open();
-}
-
-void DepthStream::close()
-{
-    while (!lock()) {
-        printf("DepthStream waiting to close\n");
-    }
-    unlock();
-
-    delete m_Frame.data;
-    m_Frame.data = nullptr;
-
-    Stream::close();
-    safeRelease(m_StreamHandle.depthFrameReader);
-}
-
-bool DepthStream::updateMode()
-{
-    ofLogWarning("ofxKinect2::DepthStream") << "Not supported yet.";
-    return false;
 }
 
 //----------------------------------------------------------
@@ -980,34 +979,6 @@ void BodyIndexStream::setPixels(Frame &frame)
     m_DoubleBuffer.swap();
 }
 
-void BodyIndexStream::update()
-{
-    if (!m_IsTextureNeedUpdate) {
-        return;
-    }
-
-    if (!m_Texture.isAllocated() || m_Texture.getWidth() != getWidth() || m_Texture.getHeight() != getHeight()) {
-#if OF_VERSION_MINOR <= 7
-        static ofTextureData data;
-
-        data.pixelType = GL_UNSIGNED_SHORT;
-        data.glTypeInternal = GL_LUMINANCE16;
-        data.width = getWidth();
-        data.height = getHeight();
-
-        m_Texture.allocate(data);
-#elif OF_VERSION_MINOR > 7
-        m_Texture.allocate(getWidth(), getHeight(), GL_RGBA, true, GL_LUMINANCE, GL_UNSIGNED_SHORT);
-#endif
-    }
-
-    if (lock()) {
-        m_Texture.loadData(m_DoubleBuffer.getFrontBuffer());
-        unlock();
-    }
-    Stream::update();
-}
-
 bool BodyIndexStream::setup(ofxKinect2::Device &device)
 {
     return Stream::setup(device, SensorType::SENSOR_BODY_INDEX);
@@ -1079,6 +1050,34 @@ void BodyIndexStream::close()
 
     safeRelease(m_StreamHandle.bodyIndexFrameReader);
     Stream::close();
+}
+
+void BodyIndexStream::update()
+{
+    if (!m_IsTextureNeedUpdate) {
+        return;
+    }
+
+    if (!m_Texture.isAllocated() || m_Texture.getWidth() != getWidth() || m_Texture.getHeight() != getHeight()) {
+#if OF_VERSION_MINOR <= 7
+        static ofTextureData data;
+
+        data.pixelType = GL_UNSIGNED_SHORT;
+        data.glTypeInternal = GL_LUMINANCE16;
+        data.width = getWidth();
+        data.height = getHeight();
+
+        m_Texture.allocate(data);
+#elif OF_VERSION_MINOR > 7
+        m_Texture.allocate(getWidth(), getHeight(), GL_RGBA, true, GL_LUMINANCE, GL_UNSIGNED_SHORT);
+#endif
+    }
+
+    if (lock()) {
+        m_Texture.loadData(m_DoubleBuffer.getFrontBuffer());
+        unlock();
+    }
+    Stream::update();
 }
 
 bool BodyIndexStream::updateMode()
@@ -1172,19 +1171,6 @@ void IrStream::setPixels(Frame &frame)
     m_DoubleBuffer.swap();
 }
 
-void IrStream::update()
-{
-    if (!m_Texture.isAllocated() || m_Texture.getWidth() != getWidth() || m_Texture.getHeight() != getHeight()) {
-        m_Texture.allocate(getWidth(), getHeight(), GL_LUMINANCE);
-    }
-
-    if (lock()) {
-        m_Texture.loadData(m_DoubleBuffer.getFrontBuffer());
-        Stream::update();
-        unlock();
-    }
-}
-
 bool IrStream::setup(ofxKinect2::Device &device)
 {
     return Stream::setup(device, SENSOR_IR);
@@ -1198,7 +1184,7 @@ bool IrStream::open()
     }
 
     IInfraredFrameSource *irFrameSource = nullptr;
-    HRESULT hr;
+    HRESULT hr = E_FAIL;
 
     hr = m_Device->get().kinect2->get_InfraredFrameSource(&irFrameSource);
 
@@ -1224,6 +1210,19 @@ void IrStream::close()
 
     Stream::close();
     safeRelease(m_StreamHandle.infraredFrameReader);
+}
+
+void IrStream::update()
+{
+    if (!m_Texture.isAllocated() || m_Texture.getWidth() != getWidth() || m_Texture.getHeight() != getHeight()) {
+        m_Texture.allocate(getWidth(), getHeight(), GL_LUMINANCE);
+    }
+
+    if (lock()) {
+        m_Texture.loadData(m_DoubleBuffer.getFrontBuffer());
+        Stream::update();
+        unlock();
+    }
 }
 
 bool IrStream::updateMode()
@@ -1274,21 +1273,6 @@ void Body::update()
     for (int jointIndex = 0; jointIndex < JointType_Count; ++jointIndex) {
         m_JointPoints[jointIndex] = bodyToScreen(m_Joints[jointIndex].Position, ofGetWidth(), ofGetHeight());
     }
-}
-
-ofPoint Body::bodyToScreen(const CameraSpacePoint &bodyPoint, int width, int height)
-{
-    // Calculate the body's position on the screen
-    ColorSpacePoint rgbPoint = {0, 0};
-    ICoordinateMapper *m_pCoordinateMapper = nullptr;
-    HRESULT hr = m_Device->get().kinect2->get_CoordinateMapper(&m_pCoordinateMapper);
-
-    if (SUCCEEDED(hr)) {
-        m_pCoordinateMapper->MapCameraPointToColorSpace(bodyPoint, &rgbPoint);
-    }
-
-    safeRelease(m_pCoordinateMapper);
-    return ofPoint(rgbPoint.X, rgbPoint.Y);
 }
 
 void Body::drawBody(bool draw3D)
@@ -1470,6 +1454,21 @@ bool Body::IsInitialized()
     return m_IsInitialized;
 }
 
+ofPoint Body::bodyToScreen(const CameraSpacePoint &bodyPoint, int width, int height)
+{
+    // Calculate the body's position on the screen
+    ColorSpacePoint rgbPoint = {0, 0};
+    ICoordinateMapper *m_pCoordinateMapper = nullptr;
+    HRESULT hr = m_Device->get().kinect2->get_CoordinateMapper(&m_pCoordinateMapper);
+
+    if (SUCCEEDED(hr)) {
+        m_pCoordinateMapper->MapCameraPointToColorSpace(bodyPoint, &rgbPoint);
+    }
+
+    safeRelease(m_pCoordinateMapper);
+    return ofPoint(rgbPoint.X, rgbPoint.Y);
+}
+
 //----------------------------------------------------------
 #pragma mark - BodyStream
 //----------------------------------------------------------
@@ -1551,107 +1550,9 @@ bool BodyStream::readFrame(IMultiSourceFrame *multiFrame)
     return readed;
 }
 
-void BodyStream::draw()
-{
-    draw(0, 0, ofGetWidth(), ofGetHeight());
-}
-
-void BodyStream::drawHands()
-{
-    if (lock()) {
-        for (int i = 0; i < m_Bodies.size(); i++) {
-            if (m_Bodies[i]->getJointPoints().size() > 0) {
-                m_Bodies[i]->drawHands();
-            }
-        }
-        unlock();
-    }
-}
-
-void BodyStream::drawHandLeft()
-{
-    if (lock()) {
-        for (int i = 0; i < m_Bodies.size(); i++) {
-            if (m_Bodies[i]->getJointPoints().size() > 0) {
-                m_Bodies[i]->drawHandLeft();
-            }
-        }
-        unlock();
-    }
-}
-
-void BodyStream::drawHandRight()
-{
-    if (lock()) {
-        for (int i = 0; i < m_Bodies.size(); i++) {
-            if (m_Bodies[i]->getJointPoints().size() > 0) {
-                m_Bodies[i]->drawHandRight();
-            }
-        }
-        unlock();
-    }
-}
-
-void BodyStream::draw(int x, int y, int w, int h)
-{
-    if (lock()) {
-        for (int i = 0; i < m_Bodies.size(); i++) {
-            if (m_Bodies[i]->getJointPoints().size() > 0) {
-                m_Bodies[i]->drawBody();
-                m_Bodies[i]->drawHands();
-            }
-        }
-        unlock();
-    }
-}
-
-size_t BodyStream::getNumBodies()
-{
-    return m_Bodies.size();
-}
-
-const Body *BodyStream::getBodyUsingIdx(int idx)
-{
-    if (lock()) {
-        if (idx < m_Bodies.size()) {
-            unlock();
-            return m_Bodies[idx];
-        }
-        unlock();
-    }
-
-    return nullptr;
-}
-
-const Body *BodyStream::getBody(UINT64 id)
-{
-    for (int i = 0; i < m_Bodies.size(); i++) {
-        if (m_Bodies[i]->getId() == id) {
-            return m_Bodies[id];
-        }
-    }
-    return m_Bodies[0];
-}
-
-ofShortPixels &BodyStream::getPixelsRef()
-{
-    return m_DoubleBuffer.getFrontBuffer();
-}
-
 void BodyStream::setPixels(Frame &frame)
 {
     Stream::setPixels(frame);
-}
-
-void BodyStream::update()
-{
-    if (lock()) {
-        for (int i = 0; i < m_Bodies.size(); i++) {
-            m_Bodies[i]->update();
-        }
-        Stream::update();
-        unlock();
-    }
 }
 
 bool BodyStream::setup(ofxKinect2::Device &device)
@@ -1696,9 +1597,102 @@ void BodyStream::close()
     }
 }
 
+void BodyStream::update()
+{
+    if (lock()) {
+        for (int i = 0; i < m_Bodies.size(); i++) {
+            m_Bodies[i]->update();
+        }
+        Stream::update();
+        unlock();
+    }
+}
+
 bool BodyStream::updateMode()
 {
     ofLogWarning("ofxKinect2::BodyStream") << "Not supported yet.";
     return false;
 }
 
+void BodyStream::draw(bool draw3D)
+{
+    if (lock()) {
+        for (int i = 0; i < m_Bodies.size(); i++) {
+            if (m_Bodies[i]->getJointPoints().size() > 0) {
+                m_Bodies[i]->drawBody(draw3D);
+                m_Bodies[i]->drawHands(draw3D);
+            }
+        }
+        unlock();
+    }
+}
+
+
+void BodyStream::drawHands()
+{
+    if (lock()) {
+        for (int i = 0; i < m_Bodies.size(); i++) {
+            if (m_Bodies[i]->getJointPoints().size() > 0) {
+                m_Bodies[i]->drawHands();
+            }
+        }
+        unlock();
+    }
+}
+
+void BodyStream::drawHandLeft()
+{
+    if (lock()) {
+        for (int i = 0; i < m_Bodies.size(); i++) {
+            if (m_Bodies[i]->getJointPoints().size() > 0) {
+                m_Bodies[i]->drawHandLeft();
+            }
+        }
+        unlock();
+    }
+}
+
+void BodyStream::drawHandRight()
+{
+    if (lock()) {
+        for (int i = 0; i < m_Bodies.size(); i++) {
+            if (m_Bodies[i]->getJointPoints().size() > 0) {
+                m_Bodies[i]->drawHandRight();
+            }
+        }
+        unlock();
+    }
+}
+
+size_t BodyStream::getNumBodies()
+{
+    return m_Bodies.size();
+}
+
+const Body *BodyStream::getBodyUsingIdx(int idx)
+{
+    if (lock()) {
+        if (idx < m_Bodies.size()) {
+            unlock();
+            return m_Bodies[idx];
+        }
+        unlock();
+    }
+
+    return nullptr;
+}
+
+const Body *BodyStream::getBody(UINT64 id)
+{
+    for (int i = 0; i < m_Bodies.size(); i++) {
+        if (m_Bodies[i]->getId() == id) {
+            return m_Bodies[id];
+        }
+    }
+    return m_Bodies[0];
+}
+
+ofShortPixels &BodyStream::getPixelsRef()
+{
+    return m_DoubleBuffer.getFrontBuffer();
+}
