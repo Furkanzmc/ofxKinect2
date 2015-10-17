@@ -1,90 +1,103 @@
 #include "ofApp.h"
 
 //--------------------------------------------------------------
-void ofApp::setup(){
-	device_ = new ofxKinect2::Device();
-	device_->setup();
-
-	if(depth_.setup(*device_))
-	{
-		depth_.open();
-	}
-
-	if (color_.setup(*device_))
-	{
-		color_.open();
-	}
-
-	if (ir_.setup(*device_))
-	{
-		ir_.open();
-	}
+void ofApp::setup()
+{
+    ofSetFrameRate(60);
+    m_Device.setup();
+    if (m_ColorStream.setup(m_Device)) {
+        m_ColorStream.open();
+    }
+    if (m_DepthStream.setup(m_Device)) {
+        m_DepthStream.open();
+    }
+    if (m_BodyIndexStream.setup(m_Device)) {
+        m_BodyIndexStream.open();
+    }
+    if (m_BodyStream.setup(m_Device)) {
+        m_BodyStream.open();
+    }
+    if (m_IrStream.setup(m_Device)) {
+        m_IrStream.open();
+    }
 }
 
 //--------------------------------------------------------------
-void ofApp::update(){
-	device_->update();
+void ofApp::update()
+{
+    m_Device.update();
 }
 
 //--------------------------------------------------------------
-void ofApp::draw(){
-	color_.draw();
-	depth_.draw(1920 - 512, 1080 - 424);
-	ir_.draw(1920 - 512, 1080 - 848);
+void ofApp::draw()
+{
+    m_ColorStream.draw(0, 0, 640, 480);
+    m_DepthStream.draw(0, 480);
+    m_BodyIndexStream.draw(ofxKinect2::DEPTH_WIDTH, 480);
+    m_IrStream.draw(680, 0);
+    m_BodyStream.draw();
 }
 
 //--------------------------------------------------------------
-void ofApp::keyPressed(int key){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::keyReleased(int key){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseMoved(int x, int y ){
+void ofApp::keyPressed(int key)
+{
 
 }
 
 //--------------------------------------------------------------
-void ofApp::mouseDragged(int x, int y, int button){
+void ofApp::keyReleased(int key)
+{
 
 }
 
 //--------------------------------------------------------------
-void ofApp::mousePressed(int x, int y, int button){
+void ofApp::mouseMoved(int x, int y)
+{
 
 }
 
 //--------------------------------------------------------------
-void ofApp::mouseReleased(int x, int y, int button){
+void ofApp::mouseDragged(int x, int y, int button)
+{
 
 }
 
 //--------------------------------------------------------------
-void ofApp::windowResized(int w, int h){
+void ofApp::mousePressed(int x, int y, int button)
+{
 
 }
 
 //--------------------------------------------------------------
-void ofApp::gotMessage(ofMessage msg){
+void ofApp::mouseReleased(int x, int y, int button)
+{
 
 }
 
 //--------------------------------------------------------------
-void ofApp::dragEvent(ofDragInfo dragInfo){ 
+void ofApp::windowResized(int w, int h)
+{
 
 }
 
 //--------------------------------------------------------------
+void ofApp::gotMessage(ofMessage msg)
+{
+
+}
+
+//--------------------------------------------------------------
+void ofApp::dragEvent(ofDragInfo dragInfo)
+{
+
+}
+
 void ofApp::exit()
 {
-	color_.close();
-	depth_.close();
-	ir_.close();
-	device_->exit();
-	delete device_;
-	device_ = NULL;
+    m_ColorStream.close();
+    m_DepthStream.close();
+    m_BodyIndexStream.close();
+    m_BodyStream.close();
+    m_IrStream.close();
+    m_Device.exit();
 }
