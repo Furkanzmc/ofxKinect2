@@ -1536,8 +1536,21 @@ bool BodyStream::readFrame(IMultiSourceFrame *multiFrame)
                     }
                 }
             }
-
             unlock();
+            //Sort the bodies from left to right on the X-axis. Player one is the left-most body.
+            auto ascSort = [](Body * bodyOne, Body * bodyTwo) {
+                bool isBigger = false;
+                const CameraSpacePoint spineMidPosOne = bodyOne->getJoint(JointType_SpineMid).Position;
+                const CameraSpacePoint spineMidPosTwo = bodyTwo->getJoint(JointType_SpineMid).Position;
+                if (spineMidPosOne.X < spineMidPosTwo.X) {
+                    isBigger = true;
+                }
+                else if (spineMidPosTwo.X < spineMidPosOne.X) {
+                    isBigger = false;
+                }
+                return isBigger;
+            };
+            std::sort(m_Bodies.begin(), m_Bodies.end(), ascSort);
         }
 
         for (int i = 0; i < _countof(ppBodies); ++i) {
@@ -1667,6 +1680,15 @@ void BodyStream::drawHandRight()
 size_t BodyStream::getNumBodies()
 {
     return m_Bodies.size();
+}
+
+const Body *BodyStream::getBodyWithIndex(BodyIndex bodyIndex)
+{
+    if (m_Bodies.size() <= bodyIndex || m_Bodies.size() == 0) {
+        return nullptr;
+    }
+
+    return m_Bodies.at(bodyIndex);
 }
 
 const Body *BodyStream::getBodyUsingIdx(int idx)

@@ -13,6 +13,7 @@ namespace ofxKinect2
 {
 static const int DEPTH_WIDTH = 512;
 static const int DEPTH_HEIGHT = 424;
+typedef unsigned int BodyIndex;
 
 void init();
 class Device;
@@ -347,8 +348,13 @@ public:
     void drawHandLeft();
     void drawHandRight();
 
-
     size_t getNumBodies();
+    /**
+     * @brief Index 0 is the left most player, 5 is the right-most player
+     * @param bodyIndex
+     * @return
+     */
+    const Body *getBodyWithIndex(BodyIndex bodyIndex);
     const Body *getBodyUsingIdx(int idx);
     const Body *getBody(UINT64 id);
     ofShortPixels &getPixelsRef();
