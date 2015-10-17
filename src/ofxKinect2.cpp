@@ -1042,7 +1042,7 @@ ofShortPixels &IrStream::getPixelsRef()
 Body::Body()
     : m_IsInitialized(false)
 {
-
+    std::fill(m_JointPoints.begin(), m_JointPoints.end(), ofPoint::zero());
 }
 
 void Body::setup(ofxKinect2::Device &device, IBody *body)
@@ -1069,9 +1069,8 @@ void Body::close()
 void Body::update()
 {
     // Update the 2D joints from the 3D skeleton
-    m_JointPoints.clear();
-    for (int i = 0; i < JointType_Count; ++i) {
-        m_JointPoints.push_back(bodyToScreen(m_Joints[i].Position, ofGetWidth(), ofGetHeight()));
+    for (int jointIndex = 0; jointIndex < JointType_Count; ++jointIndex) {
+        m_JointPoints[jointIndex] = bodyToScreen(m_Joints[jointIndex].Position, ofGetWidth(), ofGetHeight());
     }
 }
 
@@ -1282,7 +1281,7 @@ const ofPoint &Body::getJointPoint(size_t idx)
     return m_JointPoints[idx];
 }
 
-const vector<ofPoint> &Body::getJointPoints()
+const std::array<ofPoint, JointType_Count> &Body::getJointPoints()
 {
     return m_JointPoints;
 }

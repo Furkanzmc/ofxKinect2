@@ -6,6 +6,7 @@
 #include "ofMain.h"
 #include "ofxKinect2Types.h"
 #include "utils/DoubleBuffer.h"
+#include <array>
 #include <assert.h>
 
 namespace ofxKinect2
@@ -284,7 +285,7 @@ public:
     const Joint &getJoint(size_t idx);
 
     const ofPoint &getJointPoint(size_t idx);
-    const vector<ofPoint> &getJointPoints();
+    const std::array<ofPoint, JointType_Count> &getJointPoints();
 
     bool IsInitialized();
 
@@ -293,7 +294,7 @@ private:
     Device *m_Device;
     UINT64 m_TrackingID;
     Joint m_Joints[JointType_Count];
-    vector<ofPoint> m_JointPoints;
+    std::array<ofPoint, JointType_Count> m_JointPoints;
 
     HandState m_LeftHandState;
     HandState m_RightHandState;
