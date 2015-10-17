@@ -1429,22 +1429,22 @@ HandState Body::getRightHandState() const
     return m_RightHandState;
 }
 
-size_t Body::getNumJoints()
+size_t Body::getNumJoints() const
 {
     return JointType_Count;
 }
 
-const Joint &Body::getJoint(size_t idx)
+const Joint &Body::getJoint(size_t idx) const
 {
     return m_Joints[idx];
 }
 
-const ofPoint &Body::getJointPoint(size_t idx)
+const ofPoint &Body::getJointPoint(size_t idx) const
 {
     return m_JointPoints[idx];
 }
 
-const std::array<ofPoint, JointType_Count> &Body::getJointPoints()
+const std::array<ofPoint, JointType_Count> &Body::getJointPoints() const
 {
     return m_JointPoints;
 }

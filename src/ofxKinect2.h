@@ -308,11 +308,11 @@ public:
     HandState getLeftHandState() const;
     HandState getRightHandState() const;
 
-    size_t getNumJoints();
-    const Joint &getJoint(size_t idx);
+    size_t getNumJoints() const;
+    const Joint &getJoint(size_t idx) const;
 
-    const ofPoint &getJointPoint(size_t idx);
-    const std::array<ofPoint, JointType_Count> &getJointPoints();
+    const ofPoint &getJointPoint(size_t idx) const;
+    const std::array<ofPoint, JointType_Count> &getJointPoints() const;
 
     bool IsInitialized();
 
